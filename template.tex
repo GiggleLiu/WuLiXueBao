@@ -15,17 +15,18 @@
 %=================== Text begin here ==============================
 \begin{document}\apsname
 
-\title{自动微分理论 \fivestar}%{\cfundlink}
+\title{自动微分数值计算理论-地震波模拟为例 \fivestar}%{\cfundlink}
 
 \author{刘金国$^{1)}$ \quad 许开来$^{2)}$}
 
 \address{1)}{哈佛大学物理系, 坎布里奇 \quad 02138}
+\address{2)}{斯坦佛大学, 斯坦佛 \quad 94305}
 
 %\address{3)}{}
 
 \abstract{自动微分是机器学习中核心的数值技术，它被用于高效，自动的对程序求导。
 如今越来越多的物理学者意识到高效，自动的求导可以对很多物理问题的求解提供新的思路。
-本文介绍自动微分技术相关的主要理论，以及若干再物理中的应用。}
+本文介绍自动微分技术相关的主要理论，并以地震波的模拟为例介绍它的应用。}
 
 \keywords{自动微分，科学计算，编程语言}
 
@@ -49,8 +50,35 @@
     自动微分是指自动获取一个目标计算机程序导数的技术。很多人了解它是因为它在机器学习中的成功应用，人们可以用它优化带有千亿参数的神经元网络~\cite{Rosset2019}。
 与很多人印象不同的是，自动微分其实是个很古老的技术。
 Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求导计算机程序的构想，
-它利用了计算机程序的一个普遍特性，那就是不管程序有多么复杂，总可以被分解成一些基础函数。
-当知晓基础函数的自动微分规则，我们总可以通过链式法则推导出整个程序的导数。
+而最近十几年，自动微分在科学计算中的应用越来越广泛。
+过去人们求解导数很多靠手动推导，很多时候限制了一个算法可处理问题的范围，一个典型的例子是变分蒙特卡洛算法。
+过去，人们会将变分基态假设为Gutzwiller波函数~\cite{Gutzwiller1963}这样具有良好解析性质的函数。
+直到2017年，Carleo等人~\cite{Carleo2017}把机器学习中的一些变分模型限制波尔兹曼机（RBM）带入到了大家的视野，由于RBM的解析性质很好，当时求导过程仍然可以通过解析推导。 
+但受此启发，大家意识到不光是RBM这样解析性质好的函数，任何机器学习中的神经元网络也可以被用做波函数的猜测形式。
+而且如果可以用流行的机器学习框架，比如脸书公司的PyTorch和谷歌公司开发的TesnorFlow来写波函数，人们可以避免首推导数的麻烦而可以把波函数的表达变得更加自由。
+而现在，人们对自动微分的认知更加深刻了，波函数的猜测形式不光是神经元网络，而几乎可以是任意包含物理过程的计算机函数，因为计算机完全有能力微分一段看似随意的通用代码。
+因为不管程序有多么复杂，总可以被分解成一些加减乘除这样的基础解析函数。
+知晓基础函数的自动微分规则，计算机总可以通过链式法则用计算机推导出整个程序的导数。
+除了上面这个例子，科学家们利用方便的，自动化的导数解决了很多包括量子模拟~\cite{Luo2019}，分子动力学，组合优化，海洋学~\cite{Heimbach2005}和地震学~\cite{Symes2007,Zhu2020}等领域中的变分问题，控制问题和逆向工程问题。
+甚至是一些非解析的函数，比如蒙特卡洛抽样过程，人们也设计出了一些办法对其自动化的求导~\cite{Zhang2019}。
+
+那物理学家们是否只需要奉行“拿来主义”，仅阅读机器学习库的文档，就可以很好的驾驭自动微分呢？
+并不完全是的，虽然利用现有的机器学习库固然可以解决很多科学问题，尤其是与张量应用有关的问题，
+但是很多更加先进的自动微分技术需要研究者一定的理解才能更好的驾驭。
+机器学习库中定义了一些神经元网络中常用的函数族（矩阵乘法，卷积函数，relu函数等）手动定义导数传递规则，并通过上述链式法则求得用该库中提供的函数写出的程序的导数，正如流行的机器学习框架PyTorch和TensorFlow中那样。
+手动定义常用函数导数的优点是可以对函数有针对性的优化，尤其是可以保证张量运算的性能。
+这种方案的缺点是，它往往无法满足科学计算的研究中，对函数求导的多元化需求。有些时候人们可以通过添加一些求导规则来实现对程序的求导，比如在张量网络等模拟中需要用到的复数奇异值分解函数~\cite{Wan2019,Liao2019}，模拟变分量子算法中幺正量子线路的求导~\cite{Luo2019}。
+但是也有一些时候，添加求导规则也无济于事，比如，严格对教化求解基态过程中用到的极大极小本正值求解器~\cite{Xie2020}里面对稀疏矩阵构造过程的求导就不太容易指定。
+甚至很多时候，这些规则在书写之初就没有很好的考虑复变函数的求导规则可能不同而导致给出错误的梯度。比如奇异值分解函数的求导规则直到2019年，才有人意识到复数的求导规则中有一个规范不变性带来的一项被忽略了~\cite{Wan2019}。
+我们不妨称这种需要手动添加求导规则的自动微分为“狭义”自动微分。
+而接下来我们主要围绕“广义”的可以真正微分包含控制流的通用代码的自动微分，它直接微分最基础的有限的计算机指令，并给出正确性有保证的梯度。
+但“广义”自动微分的强大威力同时也带来了一些门槛，为了让研究者们更好的利用广义自动微分，本文的向物理学家们介绍该领域中的几种核心技术。
+章节~\ref{sec:forwardbackward}介绍了前向和后向自动微分，以及它们各自适合的应用场景。
+章节~\ref{sec:timespace}介绍了后向自动微分中的时间和空间交换的理论，了解它可以使得研究者可以更加好的权衡程序的运行时间和空间。
+章节~\ref{sec:applications}介绍了自动微分技术在微分地震波模拟过程中的应用。
+
+\section{链式法则的两种传递方式}\label{sec:forwardbackward}
+
     在上世纪60年代，自动微分发展出了两种不同的实践，一种叫做前向传播（Forward propagation）~\cite{Wengert1964}，一种叫做后向传播（Backward propagation）~\cite{Boltyanski1960}。
 为了直观的理解它们的不同，这里考虑一个计算过程 $f : \mathbb{R}^m \rightarrow \mathbb{R}^n$
 \begin{align*}
@@ -63,26 +91,58 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 这段程序的雅可比 (Jacobian) 矩阵$J_{ij} \equiv \frac{\partial x^L_i}{\partial x_j^0}$是一个$n\times m$的矩阵，其中$x_j^0$和$x_i^L$代表了输入和输出中的一个元素。
 前向自动微分的链式法则表述为$\frac{\partial \vx^k}{\partial x^0_j} = \frac{\partial \vx^k}{\partial \vx^{k-1}}\frac{\partial \vx^{k-1}}{\partial x^0_j}$，它计算了雅可比矩阵的第$j$列。后向自动微分的链式法则为$\frac{\partial \vx^L_i}{\partial x^{k-1}} = \frac{\partial \vx^L_i}{\partial \vx^{k}}\frac{\partial \vx^{k}}{\partial x^{k-1}}$，它计算了雅可比矩阵的第$i$行。
 在大多数应用中，计算一行雅可比矩阵比计算一列有用的多，因为
-后向自动微分的实现难度远高于前向自动微分，因为它的梯度计算方向和计算本身的方向相反，而计算梯度的过程中需要知道计算的运行状态（如函数的输入），最直接的方式便是记录所有后向传播中需要用到的中间结果。
+后向自动微分的实现难度远高于前向自动微分，因为它的梯度计算方向和计算本身的方向相反，如何回溯中间状态成了一个核心的问题。
 
 NOTE: add an illustration of forward AD and reverse AD. Change column/row to Jv and vJ.
 
-    后向自动微分的实现分为“狭义”和“广义”两种。狭义的是说，像很多传统机器学习库PyTorch和TensorFlow中所做的那样，对一些神经元网络中常用的函数族（矩阵乘法，卷积函数，relu函数等）定义导数传递规则，并通过上述链式法则求得整个程序的导数。
-这样做可以对函数有针对性的优化，尤其是可以保证张量运算的性能。
-缺点是，科学计算的研究中，对求导函数的需求往往很多元化，上述函数族并不能解决人们所有的对求导的需求。有些时候人们可以通过添加一些求导规则来实现对程序的求导，比如在张量网络等模拟中需要用到的复数奇异值分解函数\cite{Wan2019,Liao2019}，模拟变分量子算法中幺正量子线路的求导~\cite{Luo2019}。
-但是也有一些时候，添加求导规则也无济于事，比如，严格对教化求解基态过程中用到的极大极小本正值求解器~\cite{Xie2020}里面对稀疏矩阵构造过程的求导就不太容易指定。
-这时候，人们需要对一段通用的，包括控制流的代码求导，也就是广义的自动微分。
+\section{时间与空间的权衡}\label{sec:timespace}
 
-    章节\ref{sec:timespace}介绍了自动微分中最为核心的时间和空间交换的理论，了解它可以使得研究者可以更加清楚自动微分的背后的原理，从而更好的解决目标问题。
-    章节\ref{sec:applications}介绍了地震波模拟和自旋玻璃最优构型求解这两个应用。
+引言中，我们提到后向自动微分有一个无法避免的共同问题，那就是如何回溯中间状态。
+回溯中间状态最简单的做法是，记录程序的初始状态，当需要获取第$k$个计算状态$s_k$，程序从初始状态$s_0$开始进行$k$步运算。这么做缺点明显，那么就是需要$O(T^2)$的运行时间。
+当磁盘空间充裕，程序可以在每一步都进行状态拷贝，虽然有$O(T)$的额外空间开销，但是没有额外的用于运算时间。
+但很多实践中，不管是$O(T^2)$的时间开销或者是$O(T)$的空间开销都无法被接受，人们更需要的是一个均衡的计算时间和计算空间的方案。
+    在程序运行的何时，何处进行状态拷贝，成为了检查点方案的问题核心。最优的关于时间和空间交换的检查点方案在1992年被Griewank~\cite{Griewank1992}提出，它是很多广义自动微分框架的基础。算法的梗概如图\ref{fig:tradeoff} (a)所示，
+    算法把计算过程分割成$d$个区块，并记录每个区块的开始状态，每个区块的大小由函数$\eta(\tau, \delta)$决定，其中$\delta=1\ldots d$为从末尾开始数的区块的指标，$\tau = 1\ldots t$是一个超参数并被初始化为$t$。
+最后的区块最小，因此可以用上述$O(T^2)$的算法来获取中间状态，回溯完最后一个区块后，程序释放最后一个区块开始处被缓存的状态。
+于是在接下来计算倒数第二个区块的过程中，我们可以在这个计算过程中多缓存一个状态而不增加最大内存开销。类似的，倒数第$\delta$个分块可以使用的额外状态缓存数为$\delta-1$。
+对每个分开递归的调用这个算法$t$次，每次将$\tau\leftarrow \tau-1$，最后得到的分块的大小为$1$。整个算法的时间和空间开销的关系是
+\begin{align}
+    T_c = tT, S_c = dS,
+\end{align}
+其中，$T = \eta(t, d)$是初始计算时间。选择适当的$t$或者$d$，在时间和空间维度上的额外复杂度可以都是$\log(T)$。
 
-    \section{时间与空间的权衡}\label{sec:timespace}
-后向自动微分就都有一个无法避免的共同问题，那就是时间和空间的权衡。
+回溯中间状态还有另一种做法，那就是可逆计算。可逆计算的代码天然可以被回溯，但是也会因此带来额外的时间或空间的开销。由于直接赋值在可逆计算中不被允许，最直接的将不可逆代码变成可逆代码的方法是先分配内存，用累加的方式，
+\begin{align}
+    &\vx^1 \ldots \vx^L \leftarrow 0\\
+    &\vx^1 \mathrel{+}= f_1(\vx^0)\\
+    &\vx^2 \mathrel{+}= f_1(\vx^1)\\
+    &\ldots\\
+    &\vx^L \mathrel{+}= f_1(\vx^{L-1})
+\end{align}
+
+%On the other side, the optimal time-space trade-off scheme in reverse computing is the Bennett's algorithm illustrated in \Fig{fig:tradeoff} (b). It evenly \textbf{evenly} partition the program into $k$ sectors. The program marches forward ($P$ process) for $k$ steps to obtain the final state $s_{k+1}$, then backward ($Q$ process) from the $k-1$th step to erase the states in between $s_{1<i<k}$. This process is also called the \textit{compute-copy-uncompute} process. Recursively apply the compute-copy-uncompute process for each sector until each $P/Q$ process contains only one unit computation. the time and space complexities are
+\begin{align}\label{eq:rev}
+    T_r = T\left(\frac{T}{S}\right)^{\frac{\ln(2-(1/k))}{\ln k}}, S_r = \frac{k-1}{\ln k}S\log\frac{T}{S}.
+\end{align}
+%Here, the overhead in time is polynomial, which is worse than the treeverse algorithm. The treeverse like partition does not apply here because the first sweep to create initial checkpoints without introducing any space overheads is not possible in reversible computing. The pseudo-code of Bennett's time-space trade-off algorithm is shown in \Lst{lst:bennett}.
+
+\begin{figure}
+    \centerline{\includegraphics[width=0.88\columnwidth,trim={0 0cm 0 0cm},clip]{tradeoff.pdf}}
+    \caption{(a) 广义自动微分中常见的Treeverse算法~\cite{Griewank1992}，其中$\eta(\tau, \delta) \equiv \left(\begin{matrix} \tau + \delta \\ \delta \end{matrix}\right)=\frac{(\tau+\delta)!}{\tau!\delta!}$。(b) 可逆计算时空交换的Bennett算法。~\cite{Bennett1973,Levine1990} 其中，$P$和$Q$分别代表了计算和反计算。它的伪代码是代码块\ref{lst:bennett}。}\label{fig:tradeoff}
+\end{figure}
+
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\columnwidth]{./fig1.pdf}
+    \caption{为了回溯中间状态，时间和空间在两种最优时间-空间交换策略下的关系。(a) 固定横轴为状态回溯的计算时间与原函数计算时间的比值，对比再允许固定时间开销下，内存的额外开销。其中Bennett算法代表了可逆计算下的最优策略，而Treeverse则是传统计算允许的最优策略。(b) 对比Bennett算法与Treeverse算法空间开销的比值。\label{fig:timespace}} 
+\end{figure}
 
 
 \section{自动微分在物理中的应用}\label{sec:applications}
 \vskip 1.55\baselineskip
 \subsection{地震波的模拟}
+后来在地震学的模拟中，它被用来微分地震波传播的过程~\cite{Symes2007}。
 
 \vskip 1.55\baselineskip
 \subsection{热带（Tropical）张量网络求解自旋玻璃最优构型}
