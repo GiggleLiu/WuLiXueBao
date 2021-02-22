@@ -3,11 +3,14 @@
 %\usepackage{slashbox}\usepackage{makecell}\usepackage{diagbox}\backslashbox
 \usepackage{aappss}
 \usepackage{subcaption}
+\usepackage{tabularx}
 %\usepackage{epstopdf}
 
 \newcommand{\vx}{{\mathbf{x}}}
 %\renewcommand\baselinestretch{1.235}\protect
 \renewcommand\baselinestretch{2.0}\protect
+\newcommand{\bigO}{{\mathcal{O}}}
+\newcommand{\ra}[1]{\renewcommand{\arraystretch}{#1}}
 \abovedisplayshortskip 0 pt plus 3pt
 \belowdisplayshortskip 6 pt plus 2pt minus 2pt
 \abovedisplayskip 6 pt plus 2pt minus 2pt
@@ -51,8 +54,9 @@
     自动微分是指自动获取一个目标计算机程序导数的技术。很多人了解它是因为它在机器学习中的成功应用，人们可以用它优化带有千亿参数的神经元网络~\cite{Rosset2019}。
 与很多人印象不同的是，自动微分其实是个很古老的技术。
 Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求导计算机程序的构想，
-而最近十几年，自动微分在科学计算中的应用越来越广泛。
-过去人们需要依赖手动推导求解导数，也因此限制了一个算法可处理问题的范围。一个典型的例子是变分蒙特卡洛算法。
+而最近十几年，自动微分在科学计算中的应用越来越广泛并拓展了人们可解决问题的范畴。
+%过去人们需要依赖手动推导求解导数，也因此限制了一个算法可处理问题的范围。
+    一个典型的例子是变分蒙特卡洛算法。
 过去，人们会将变分基态假设为Gutzwiller波函数~\cite{Gutzwiller1963}这样具有良好解析性质的函数。
 直到2017年，Carleo等人~\cite{Carleo2017, Deng2017}把机器学习中的一些变分模型限制波尔兹曼机（RBM）带入到了大家的视野。由于RBM的解析性质很好，计算所需的求导过程可以通过解析推导，所以当时人们并没有强烈的利用计算机辅助求导的动机。
 但受此启发，大家意识到不光是RBM这样解析性质好的函数，任何机器学习中的神经元网络也可以被用做波函数的猜测形式~\cite{Cai2018}。
@@ -70,16 +74,16 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 还有些时候手动定义的导数可能会出错，尤其是将定义在实数上的规则拓展到复数域的时候。比如奇异值分解函数的求导规则直到2019年，才有人意识到复数的求导规则中有一个规范不变性带来的一项被忽略了~\cite{Wan2019}。
 而广义的自动微分没有这些问题，它微分规则定义在标量的最基础的运算之上，这些基础运算有限而且很难出错。
     一个很好的描述它与狭义自动微分区别的例子是，当将两个复数相加，广义的自动微分看到的是实部相加和虚部相加这两个操作，而狭义自动微分则需要推导适用于复变函数的Wirtinger导数~\cite{Hirose2003}。
-但广义自动微分的强大威力同时也带来了一些问题，其中最核心的问题是它把机器学习中本身就存在的内存占用问题扩大了，
+但广义自动微分的强大威力同时也带来了一些问题，其中最核心的问题是广义的后向自动微分把机器学习中本身就存在的内存占用问题扩大了，
 使得用户不得不直接或间接的面对这些问题。
-为了让研究者们更好的利用广义自动微分解决物理中的实际问题，本文的向物理学家们介绍该领域中的几种核心概念以及它在微分模拟地震波传播过程中的应用。
+为了让研究者们更好的利用自动微分解决物理中的实际问题，本文的向物理学家们介绍自动微分中的几种核心概念以及它在微分模拟地震波传播过程中的应用。
 章节\ref{sec:forwardbackward}~ 介绍了两种基本的自动微分模式，前向和后向自动微分。
 章节\ref{sec:timespace}~ 介绍了基于检查点和可逆编程的两种广义后向自动微分的基础理论，尤其两者如何权衡程序的运行时间和空间。
 章节\ref{sec:applications}~ 介绍了不同广义自动微分技术在微分地震波模拟过程中的应用。
 
 \section{链式法则的两种传递方式}\label{sec:forwardbackward}
 
-    在上世纪60年代，自动微分发展出了两种不同的实践，一种叫做前向传播（Forward propagation）~\cite{Wengert1964}，一种叫做后向传播（Backward propagation）~\cite{Boltyanski1960}。
+    自动微分可以分为两大类，一种叫做前向传播（Forward propagation）~\cite{Wengert1964}，一种叫做后向传播（Backward propagation）~\cite{Boltyanski1960}。
 
 
 %为了直观的理解它们的不同，这里考虑一个计算过程 $f : \mathbb{R}^m \rightarrow \mathbb{R}^n$
@@ -99,47 +103,76 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 \centering
 \begin{subfigure}[b]{0.32\textwidth}
     \centering
-    \includegraphics[width=\textwidth, trim={1cm 0 0cm 0}, clip]{./forwarddiff.pdf}
-    \caption{前向自动微分}
+    \includegraphics[width=\textwidth, trim={1cm 3cm 0cm 1cm}, clip]{./forwarddiff.pdf}
+    \caption{\small 前向自动微分}
 \end{subfigure}
 \begin{subfigure}[b]{0.32\textwidth}
     \centering
-    \includegraphics[width=\textwidth, trim={0 0 1cm 0}, clip]{./backward-forward.pdf}
-    \caption{后向自动微分(1)}
+    \includegraphics[width=\textwidth, trim={0 3cm 1cm 1cm}, clip]{./backward-forward.pdf}
+    \caption{\small 后向自动微分中的前向计算}
 \end{subfigure}
 \begin{subfigure}[b]{0.32\textwidth}
     \centering
-    \includegraphics[width=\textwidth, trim={0 0 1cm 0}, clip]{./backward-backward.pdf}
-    \caption{后向自动微分(2)}
+    \includegraphics[width=\textwidth, trim={0 3cm 1cm 1cm}, clip]{./backward-backward.pdf}
+    \caption{\small 后向自动微分中的梯度反向传播}
 \end{subfigure}
-        \caption{利用自动微分计算对于计算过程$y = z \sin(x)$的导数$\overline{x}\equiv \frac{\partial y}{\partial x}$和$\overline{z}\equiv \frac{\partial y}{\partial z}$。\label{fig:autodifftypes}} 
+        \caption{利用自动微分计算对于计算过程$y = z \sin(x)$的导数$\overline{x}\equiv \frac{\partial y}{\partial x}$和$\overline{z}\equiv \frac{\partial y}{\partial z}$。其中圆圈代表函数，线代表变量，箭头代表运算方向，$\Sigma$是一个用于缓存中间计算结果的全局堆栈而\texttt{push}和\texttt{pop}分别代表了对该堆栈的入栈和出栈操作。\label{fig:autodifftypes}} 
 \end{figure}
 
+让我们从图\ref{fig:autodifftypes}中演示的例子出发看看它们有何异同。(a)所示的是前向自动微分在运算中会携带一种特殊的变量$\epsilon^i$，它正是我们高等数学中的“无穷小量”，而上标$i$代表它对应第$i$个变量。
+计算中我们只保留到一阶，因此它满足代数规则$\epsilon^i\epsilon^j = 0$。
 前向自动微分作用在标量上的梯度的第推公式为
 \begin{align}
-    f(x+\sum\limits^k_{i=1} y_i \epsilon_i) = f(x) + \frac{\partial f(x)}{\partial x} \sum\limits^k_{i=1}y_i\epsilon_i
+    f(x+\sum\limits^k_{i=1} y_i \epsilon^i) = f(x) + \frac{\partial f(x)}{\partial x} \sum\limits^k_{i=1}y_i\epsilon^i
 \end{align}
 
-其中，$\epsilon_i$正是我们高等数学中的“无穷小量”，而下标$i$代表它对应第$i$个变量。计算中我们只保留到一阶，因此它满足代数规则$\epsilon_i\epsilon_j = 0$。因此，实现一个前向自动微分本质就是实现一种携带无穷小量的特殊变量在函数作用下的变换。
+因此，实现一个前向自动微分本质就是实现一种携带无穷小量的特殊变量在函数作用下的变换。
 前向自动微分的计算时间随着需求导的变量的数目线性增长。因为随着变量数目的增加，$\epsilon$的数目线性增加，函数的操作数也随之线性增加。
-其中，$\epsilon_i$正是我们高等数学中的“无穷小量”，而下标$i$代表它对应第$i$个变量。计算中我们只保留到一阶，因此它满足代数规则$\epsilon_i\epsilon_j = 0$。因此，实现一个前向自动微分本质就是实现一种携带无穷小量的特殊变量在函数作用下的变换。
+其中，$\epsilon^i$正是我们高等数学中的“无穷小量”，而下标$i$代表它对应第$i$个变量。计算中我们只保留到一阶，因此它满足代数规则$\epsilon^i\epsilon^j = 0$。因此，实现一个前向自动微分本质就是实现一种携带无穷小量的特殊变量在函数作用下的变换。
 前向自动微分的计算时间随着需求导的变量的数目线性增长。因为随着变量数目的增加，$\epsilon$的数目线性增加，函数的操作数也随之线性增加。
 
-后向自动微分作用在标量上的梯度的第推公式为
+图 (b) 和 (c) 展示了后向自动微分的前向过程和后向过程，前向过程中函数除了运算本身，还会将部分中间结果放入一个全局堆栈$\Sigma$中，
+而后向过程将这些缓存的结果出栈并利用如下递推公式计算导数
 \begin{align}
     \overline{x} = \frac{\partial f(x)}{\partial x}\overline{y}
 \end{align}
-其中，$\overline{x}\equiv \frac{\partial \mathcal{L}}{\partial x}$为变量$x$的梯度，这个定义同时隐含了程序最终会输出一个标量$\mathcal{L}$作为损失函数。值得注意的是，为了计算$\frac{\partial f(x)}{\partial x}$，我们往往需要知道额外的一些信息，比如$x$的数值。但是在后向传播过程中，知道中间变量数值并非易事，我们或是把需要的变量放入一个全局的堆栈，或是利用可逆编程写可逆的代码并通过反向执行来获取中间变量数值。
+其中，$\overline{\cdot}$代表了相应变量的梯度$\frac{\partial \mathcal{L}}{\partial \cdot}$，这个定义同时隐含了程序最终会输出一个标量$\mathcal{L}$作为损失函数。
+这个算法的复杂度对于需要求导的变量数目不敏感，相反因为这里假设了输出变量只有一个，该算法的实际计算量会随着输出变量的数目而线性增加。但考虑到实际应用中，输出往往只有一个，也就是损失函数，因此它在求导$\sim 10^2$以上的输入变量的优化问题中对比前向自动微分拥有优势。
+值得注意的是，对堆栈的操作也带来了正比于计算步骤数 ($\mathcal{O}(T)$)的空间开销以及频繁访问内存带来的性能下降的问题，这是后向自动微分框架设计以及使用的复杂性的来源。
 
+\section{后向自动微分的时间与空间的权衡}\label{sec:timespace}
 
-\section{时间与空间的权衡}\label{sec:timespace}
+前面我们提到后向自动微分有一个无法避免的共同问题，那就是如何回溯中间状态。图\ref{fig:autodifftypes} (b), (c)演示的是如何利用堆栈来缓存中间状态并回溯。但其实还有一种更加简单的做法是，那就是仅记录程序的初始状态，当需要获取第$k$个计算状态$s_k$，程序从初始状态$s_0$开始进行$k$步运算。这个算法虽然没有额外的空间开销，但是需要$O(T^2)$的运行时间。
+但很多实践中，不管是$O(T^2)$的时间开销或者是$O(T)$的空间开销都不实际，人们更需要的是一个均衡的计算时间和计算空间的方案。
+人们设计出了检查点方案，它的核心思路是在确定在程序运行的何时，何处进行状态拷贝。最优的关于时间和空间交换的检查点方案在1992年被Griewank~\cite{Griewank1992}提出，它是很多广义自动微分框架的基础。
+ 
+回溯中间状态还有另一种做法，那就是可逆计算。可逆计算的代码不需要借助全局堆栈也可以被回溯。但它并非免费的午餐，因为它也需要额外的空间保证不丢弃信息以保证可逆性。它并不像传统代码一样可以随意的擦除或释放内存，可逆计算“释放”内存的方式是通过反计算把变量内容恢复到0状态，也就是用反计算的时间交换空间。
 
-引言中，我们提到后向自动微分有一个无法避免的共同问题，那就是如何回溯中间状态。
-回溯中间状态最简单的做法是，记录程序的初始状态，当需要获取第$k$个计算状态$s_k$，程序从初始状态$s_0$开始进行$k$步运算。这么做缺点明显，那么就是需要$O(T^2)$的运行时间。
-当磁盘空间充裕，程序可以在每一步都进行状态拷贝，虽然有$O(T)$的额外空间开销，但是没有额外的用于运算时间。
-但很多实践中，不管是$O(T^2)$的时间开销或者是$O(T)$的空间开销都无法被接受，人们更需要的是一个均衡的计算时间和计算空间的方案。
-    在程序运行的何时，何处进行状态拷贝，成为了检查点方案的问题核心。最优的关于时间和空间交换的检查点方案在1992年被Griewank~\cite{Griewank1992}提出，它是很多广义自动微分框架的基础。算法的梗概如图\ref{fig:tradeoff} (a)所示，
-    算法把计算过程分割成$d$个区块，并记录每个区块的开始状态，每个区块的大小由函数$\eta(\tau, \delta)$决定，其中$\delta=1\ldots d$为从末尾开始数的区块的指标，$\tau = 1\ldots t$是一个超参数并被初始化为$t$。
+\subsection{鹅卵石游戏}
+鹅卵石游戏是在一维格子上的单人游戏，游戏开始，玩家拥有一堆鹅卵石以及一个一维排布的$G$个格子，标记为$0,1,2\ldots G$，并且在$0$号格子上有一个预先布置的鹅卵石。游戏目标是从自己的堆中取尽可能最少的鹅卵石，或是使用尽可能少的步骤数。
+
+它最初被提出描述可逆计算中的时间与空间的权衡，其规则为
+\begin{enumerate}
+    \item 放置规则：如果第$i$个格子上有鹅卵石，则可以从自己堆中取一个鹅卵石放置于第$i+1$个格子中，
+    \item 回收规则：仅当第$i$个格子上有鹅卵石，才可以把第$i+1$个格子上的鹅卵石取下放入自己的堆中，
+    \item 结束条件：第$G$个格子上有鹅卵石。
+\end{enumerate}
+
+我们稍微修改可以得到检查点版本的规则，它为用户增加了一支画笔用于涂鸦格点，其规则描述为
+\begin{enumerate}
+    \item 放置规则：如果第$i$个格子上有鹅卵石，则可以从自己堆中取一个鹅卵石放置于第$i+1$个格子中，
+    \item 回收规则：可以随意把格子上的鹅卵石取下放入自己的堆中，且不计入步骤数，
+    \item 涂鸦规则：当第$i$个格子有鹅卵石，且第$i+1$个格子被涂鸦或$i=G$，可以涂鸦第$i$个格子，涂鸦不记入步骤数，
+    \item 结束条件：涂鸦完所有的格点。
+\end{enumerate}
+
+鹅卵石游戏是对计算过程的时间和空间交换的一种理想化的描述，
+它假设了每个计算步骤都需要固定的内存开销以及时间开销，并用一个鹅卵石代表了一个单位的内存，
+而放置和取回鹅卵石的步骤数代表了一个单位的运算时间。
+在可逆计算中，内存的释放必须通过反计算来实现，因此需要消耗步骤数且要求其前置状态存在以保证反计算的可行。
+检查点方案中，涂鸦过程代表了梯度反向传播的过程，它要求按照以与程序正常运行方向相反的顺序访问计算状态。
+
+有了鹅卵石游戏的图像，我们看下检查点方案的算法的梗概如图\ref{fig:tradeoff} (a)所示，算法把计算过程分割成$d$个区块，并记录每个区块的开始状态，每个区块的大小由函数$\eta(\tau, \delta)$决定，其中$\delta=1\ldots d$为从末尾开始数的区块的指标，$\tau = 1\ldots t$是一个超参数并被初始化为$t$。
 最后的区块最小，因此可以用上述$O(T^2)$的算法来获取中间状态，回溯完最后一个区块后，程序释放最后一个区块开始处被缓存的状态。
 于是在接下来计算倒数第二个区块的过程中，我们可以在这个计算过程中多缓存一个状态而不增加最大内存开销。类似的，倒数第$\delta$个分块可以使用的额外状态缓存数为$\delta-1$。
 对每个分开递归的调用这个算法$t$次，每次将$\tau\leftarrow \tau-1$，最后得到的分块的大小为$1$。整个算法的时间和空间开销的关系是
@@ -148,16 +181,7 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 \end{align}
 其中，$T = \eta(t, d)$是初始计算时间。选择适当的$t$或者$d$，在时间和空间维度上的额外复杂度可以都是$\log(T)$。
 
-回溯中间状态还有另一种做法，那就是可逆计算。可逆计算的代码天然可以被回溯，但是也会因此带来额外的时间或空间的开销。由于直接赋值在可逆计算中不被允许，最直接的将不可逆代码变成可逆代码的方法是先分配内存，用累加的方式，
-\begin{align}
-    &\vx^1 \ldots \vx^L \leftarrow 0\\
-    &\vx^1 \mathrel{+}= f_1(\vx^0)\\
-    &\vx^2 \mathrel{+}= f_1(\vx^1)\\
-    &\ldots\\
-    &\vx^L \mathrel{+}= f_1(\vx^{L-1})
-\end{align}
-
-%On the other side, the optimal time-space trade-off scheme in reverse computing is the Bennett's algorithm illustrated in \Fig{fig:tradeoff} (b). It evenly \textbf{evenly} partition the program into $k$ sectors. The program marches forward ($P$ process) for $k$ steps to obtain the final state $s_{k+1}$, then backward ($Q$ process) from the $k-1$th step to erase the states in between $s_{1<i<k}$. This process is also called the \textit{compute-copy-uncompute} process. Recursively apply the compute-copy-uncompute process for each sector until each $P/Q$ process contains only one unit computation. the time and space complexities are
+如图\ref{fig:tradeoff} (b)所示的是可逆计算框架下时间和空间最优交换方案，也被称为Bennett算法。它将程序均匀的分割为$k$等份，先是像前执行$k$步得到结果，然后从最后第$k-1$步运算开始执行反计算以清除中间计算结果释放内存。在每个区块中，可以递归的的分割并
 \begin{align}\label{eq:rev}
     T_r = T\left(\frac{T}{S}\right)^{\frac{\ln(2-(1/k))}{\ln k}}, S_r = \frac{k-1}{\ln k}S\log\frac{T}{S}.
 \end{align}
@@ -168,6 +192,20 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
     \caption{(a) 广义自动微分中常见的Treeverse算法~\cite{Griewank1992}，其中$\eta(\tau, \delta) \equiv \left(\begin{matrix} \tau + \delta \\ \delta \end{matrix}\right)=\frac{(\tau+\delta)!}{\tau!\delta!}$。(b) 可逆计算时空交换的Bennett算法。~\cite{Bennett1973,Levine1990} 其中，$P$和$Q$分别代表了计算和反计算。它的伪代码是代码块\ref{lst:bennett}。}\label{fig:tradeoff}
 \end{figure}
 
+可逆计算的优点是可以很方便的利用可逆性。
+
+
+\begin{table}
+    \centering
+    \begin{tabularx}{0.6\textwidth}{cccc}\toprule
+        \textbf{方法} & 时间最优 & 空间最优\\
+        \hline
+        检查点                           & $\bigO(T)/\bigO(T+S)$   & $\bigO(T^2)/\bigO(S)$   \\
+        可逆编程  & $\bigO(T)/\bigO(T+S)$   & $\bigO(T(\frac{T}{S})^{0.585})/\bigO(S\log(\frac{T}{S}))$ \\
+        \bottomrule
+    \end{tabularx}
+    \caption{$T$ and $S$ are the time and space of the original irreversible program. In the "Reverse computing" case, the reversibility of the original program is not utilized.}\label{tbl:timespace}
+\end{table}
 
 \begin{figure}[t]
 \centering
@@ -182,25 +220,25 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 后来在地震学的模拟中，它被用来微分地震波传播的过程~\cite{Symes2007}。
 
 \vskip 1.55\baselineskip
-\subsection{热带（Tropical）张量网络求解自旋玻璃最优构型}
-热带张量网络是张量网络的一个特别的应用，它重新定义了张量中基础元素的代数为
-\begin{eqnarray}
-x \oplus y  = \max(x, y),\,\,\,\,\,\,\,\,\,\,\,\, \,\,\,\,
-x \odot y   =  x + y. \label{eq:max-sum-alg}
-\end{eqnarray}
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{./transform12.pdf}
-    \caption{正方晶格上的自旋玻璃问题，(a)对应的热带张量网络表示。(b)对应的“量子线路”表示。\label{fig:performance}} 
-\end{figure}
-如果我们将张量中的元素定义为自旋玻璃的耦合强度，我们就可以通过收缩这个张量结构得到自旋玻璃的最优构型。
-这个最优构型的能量表达式为
-\begin{equation}
-    E(\{\sigma\}) = \max\limits_{\sigma}-\sum_{i < j }J_{ij} \sigma_i \sigma_j  - \sum_i h_i \sigma_i,
-\label{eq:spinglassopt}
-\end{equation}
-    因此对它的微分就是。
-但是作了这样的替换，张量收缩的微分规则就发生了变换。
+%\subsection{热带（Tropical）张量网络求解自旋玻璃最优构型}
+%热带张量网络是张量网络的一个特别的应用，它重新定义了张量中基础元素的代数为
+%\begin{eqnarray}
+%x \oplus y  = \max(x, y),\,\,\,\,\,\,\,\,\,\,\,\, \,\,\,\,
+%x \odot y   =  x + y. \label{eq:max-sum-alg}
+%\end{eqnarray}
+%\begin{figure}[t]
+%\centering
+%\includegraphics[width=\columnwidth]{./transform12.pdf}
+    %\caption{正方晶格上的自旋玻璃问题，(a)对应的热带张量网络表示。(b)对应的“量子线路”表示。\label{fig:performance}} 
+%\end{figure}
+%如果我们将张量中的元素定义为自旋玻璃的耦合强度，我们就可以通过收缩这个张量结构得到自旋玻璃的最优构型。
+%这个最优构型的能量表达式为
+%\begin{equation}
+    %E(\{\sigma\}) = \max\limits_{\sigma}-\sum_{i < j }J_{ij} \sigma_i \sigma_j  - \sum_i h_i \sigma_i,
+%\label{eq:spinglassopt}
+%\end{equation}
+    %因此对它的微分就是。
+%但是作了这样的替换，张量收缩的微分规则就发生了变换。
 
 \section{结~~~~论}
 
