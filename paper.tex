@@ -2,6 +2,7 @@
 \documentclass[A4,twoside,fontset=ubuntu,UTF8]{ctexart}
 %\usepackage{slashbox}\usepackage{makecell}\usepackage{diagbox}\backslashbox
 \usepackage{aappss}
+\usepackage{subcaption}
 %\usepackage{epstopdf}
 
 \newcommand{\vx}{{\mathbf{x}}}
@@ -51,49 +52,85 @@
 与很多人印象不同的是，自动微分其实是个很古老的技术。
 Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求导计算机程序的构想，
 而最近十几年，自动微分在科学计算中的应用越来越广泛。
-过去人们求解导数很多靠手动推导，很多时候限制了一个算法可处理问题的范围，一个典型的例子是变分蒙特卡洛算法。
+过去人们需要依赖手动推导求解导数，也因此限制了一个算法可处理问题的范围。一个典型的例子是变分蒙特卡洛算法。
 过去，人们会将变分基态假设为Gutzwiller波函数~\cite{Gutzwiller1963}这样具有良好解析性质的函数。
-直到2017年，Carleo等人~\cite{Carleo2017}把机器学习中的一些变分模型限制波尔兹曼机（RBM）带入到了大家的视野，由于RBM的解析性质很好，当时求导过程仍然可以通过解析推导。 
-但受此启发，大家意识到不光是RBM这样解析性质好的函数，任何机器学习中的神经元网络也可以被用做波函数的猜测形式。
-而且如果可以用流行的机器学习框架，比如脸书公司的PyTorch和谷歌公司开发的TesnorFlow来写波函数，人们可以避免首推导数的麻烦而可以把波函数的表达变得更加自由。
-而现在，人们对自动微分的认知更加深刻了，波函数的猜测形式不光是神经元网络，而几乎可以是任意包含物理过程的计算机函数，因为计算机完全有能力微分一段看似随意的通用代码。
-因为不管程序有多么复杂，总可以被分解成一些加减乘除这样的基础解析函数。
-知晓基础函数的自动微分规则，计算机总可以通过链式法则用计算机推导出整个程序的导数。
-除了上面这个例子，科学家们利用方便的，自动化的导数解决了很多包括量子模拟~\cite{Luo2019}，分子动力学，组合优化，海洋学~\cite{Heimbach2005}和地震学~\cite{Symes2007,Zhu2020}等领域中的变分问题，控制问题和逆向工程问题。
-甚至是一些非解析的函数，比如蒙特卡洛抽样过程，人们也设计出了一些办法对其自动化的求导~\cite{Zhang2019}。
+直到2017年，Carleo等人~\cite{Carleo2017, Deng2017}把机器学习中的一些变分模型限制波尔兹曼机（RBM）带入到了大家的视野。由于RBM的解析性质很好，计算所需的求导过程可以通过解析推导，所以当时人们并没有强烈的利用计算机辅助求导的动机。
+但受此启发，大家意识到不光是RBM这样解析性质好的函数，任何机器学习中的神经元网络也可以被用做波函数的猜测形式~\cite{Cai2018}。
+而且如果可以用流行的机器学习框架，比如脸书公司开发的PyTorch和谷歌公司开发的TesnorFlow来编写生成波函数的代码，人们可以避免手动推导导数的麻烦，从而可以把波函数的表达变得更加自由。
+而现在，随着人们对微分的认知更加深刻，波函数不光可以表达为以张量运算为主体的神经元网络，还可以是几乎任意的计算机程序。
+%一段通用的代码总可以被分解成一些加减乘除这样的基础解析函数,知晓基础函数的自动微分规则，计算机可以通过链式法则用计算机推导出整个程序的导数。
+    除了这个例子，科学家们利用方便的，自动化的计算机辅助求导还解决了很多包括量子模拟~\cite{Luo2019}，张量网络~\cite{Liao2019}，组合优化~\cite{Liu2020}，海洋学~\cite{Heimbach2005}和地震学~\cite{Symes2007,Zhu2020}等领域中的问题。
+甚至是一些非解析的蒙特卡洛抽样过程，人们也设计出了一些办法对其自动化的求导~\cite{Zhang2019}。
 
 那物理学家们是否只需要奉行“拿来主义”，仅阅读机器学习库的文档，就可以很好的驾驭自动微分呢？
-并不完全是的，虽然利用现有的机器学习库固然可以解决很多科学问题，尤其是与张量应用有关的问题，
-但是很多更加先进的自动微分技术需要研究者一定的理解才能更好的驾驭。
-机器学习库中定义了一些神经元网络中常用的函数族（矩阵乘法，卷积函数，relu函数等）手动定义导数传递规则，并通过上述链式法则求得用该库中提供的函数写出的程序的导数，正如流行的机器学习框架PyTorch和TensorFlow中那样。
-手动定义常用函数导数的优点是可以对函数有针对性的优化，尤其是可以保证张量运算的性能。
-这种方案的缺点是，它往往无法满足科学计算的研究中，对函数求导的多元化需求。有些时候人们可以通过添加一些求导规则来实现对程序的求导，比如在张量网络等模拟中需要用到的复数奇异值分解函数~\cite{Wan2019,Liao2019}，模拟变分量子算法中幺正量子线路的求导~\cite{Luo2019}。
-但是也有一些时候，添加求导规则也无济于事，比如，严格对教化求解基态过程中用到的极大极小本正值求解器~\cite{Xie2020}里面对稀疏矩阵构造过程的求导就不太容易指定。
-甚至很多时候，这些规则在书写之初就没有很好的考虑复变函数的求导规则可能不同而导致给出错误的梯度。比如奇异值分解函数的求导规则直到2019年，才有人意识到复数的求导规则中有一个规范不变性带来的一项被忽略了~\cite{Wan2019}。
-我们不妨称这种需要手动添加求导规则的自动微分为“狭义”自动微分。
-而接下来我们主要围绕“广义”的可以真正微分包含控制流的通用代码的自动微分，它直接微分最基础的有限的计算机指令，并给出正确性有保证的梯度。
-但“广义”自动微分的强大威力同时也带来了一些门槛，为了让研究者们更好的利用广义自动微分，本文的向物理学家们介绍该领域中的几种核心技术。
-章节~\ref{sec:forwardbackward}介绍了前向和后向自动微分，以及它们各自适合的应用场景。
-章节~\ref{sec:timespace}介绍了后向自动微分中的时间和空间交换的理论，了解它可以使得研究者可以更加好的权衡程序的运行时间和空间。
-章节~\ref{sec:applications}介绍了自动微分技术在微分地震波模拟过程中的应用。
+并不完全是的，当大家谈论自动微分的时候有“狭义”和“广义”之分，而主流机器学习库仅涵盖了前者。
+这里狭义自动微分是指机器学习库中广泛应用的以张量为基本数据类型的自动微分。它通过对常用的函数族（矩阵乘法，卷积函数，relu函数等）手动定义导数后向传递的规则，并通过链式法则将它们连接起来得到程序的导数。
+手动定义常用函数导数可以对函数有更加针对性的优化从而保证张量运算的性能，但缺点是，它往往无法满足科学计算的研究中对函数求导的多元化需求。有些时候人们可以通过手动添加一些求导规则来辅助求导，比如在张量网络等模拟中需要用到的复数奇异值分解函数~\cite{Wan2019,Liao2019}。
+但是也有一些时候添加求导规则也无济于事，比如，严格对教化求解基态过程中用到的极大极小本正值求解器~\cite{Xie2020}和模拟变分量子算法中幺正量子线路的求导~\cite{Luo2019}的求导，前者涉及了无法表达为向量函数的稀疏矩阵的构造过程而后者涉及了利用可逆性回溯中间状态。
+还有些时候手动定义的导数可能会出错，尤其是将定义在实数上的规则拓展到复数域的时候。比如奇异值分解函数的求导规则直到2019年，才有人意识到复数的求导规则中有一个规范不变性带来的一项被忽略了~\cite{Wan2019}。
+而广义的自动微分没有这些问题，它微分规则定义在标量的最基础的运算之上，这些基础运算有限而且很难出错。
+    一个很好的描述它与狭义自动微分区别的例子是，当将两个复数相加，广义的自动微分看到的是实部相加和虚部相加这两个操作，而狭义自动微分则需要推导适用于复变函数的Wirtinger导数~\cite{Hirose2003}。
+但广义自动微分的强大威力同时也带来了一些问题，其中最核心的问题是它把机器学习中本身就存在的内存占用问题扩大了，
+使得用户不得不直接或间接的面对这些问题。
+为了让研究者们更好的利用广义自动微分解决物理中的实际问题，本文的向物理学家们介绍该领域中的几种核心概念以及它在微分模拟地震波传播过程中的应用。
+章节\ref{sec:forwardbackward}~ 介绍了两种基本的自动微分模式，前向和后向自动微分。
+章节\ref{sec:timespace}~ 介绍了基于检查点和可逆编程的两种广义后向自动微分的基础理论，尤其两者如何权衡程序的运行时间和空间。
+章节\ref{sec:applications}~ 介绍了不同广义自动微分技术在微分地震波模拟过程中的应用。
 
 \section{链式法则的两种传递方式}\label{sec:forwardbackward}
 
     在上世纪60年代，自动微分发展出了两种不同的实践，一种叫做前向传播（Forward propagation）~\cite{Wengert1964}，一种叫做后向传播（Backward propagation）~\cite{Boltyanski1960}。
-为了直观的理解它们的不同，这里考虑一个计算过程 $f : \mathbb{R}^m \rightarrow \mathbb{R}^n$
-\begin{align*}
-    &\vx^1 = f_1(\vx^0)\\
-    &\vx^2 = f_2(\vx^1)\\
-    &\ldots\\
-    &\vx^L = f_L(\vx^{L-1})
-\end{align*}
-其中 $x^0\in R^m$, $x^L\in R^n$, $L$是计算的步骤数。
-这段程序的雅可比 (Jacobian) 矩阵$J_{ij} \equiv \frac{\partial x^L_i}{\partial x_j^0}$是一个$n\times m$的矩阵，其中$x_j^0$和$x_i^L$代表了输入和输出中的一个元素。
-前向自动微分的链式法则表述为$\frac{\partial \vx^k}{\partial x^0_j} = \frac{\partial \vx^k}{\partial \vx^{k-1}}\frac{\partial \vx^{k-1}}{\partial x^0_j}$，它计算了雅可比矩阵的第$j$列。后向自动微分的链式法则为$\frac{\partial \vx^L_i}{\partial x^{k-1}} = \frac{\partial \vx^L_i}{\partial \vx^{k}}\frac{\partial \vx^{k}}{\partial x^{k-1}}$，它计算了雅可比矩阵的第$i$行。
-在大多数应用中，计算一行雅可比矩阵比计算一列有用的多，因为
-后向自动微分的实现难度远高于前向自动微分，因为它的梯度计算方向和计算本身的方向相反，如何回溯中间状态成了一个核心的问题。
 
-NOTE: add an illustration of forward AD and reverse AD. Change column/row to Jv and vJ.
+
+%为了直观的理解它们的不同，这里考虑一个计算过程 $f : \mathbb{R}^m \rightarrow \mathbb{R}^n$
+%\begin{align*}
+    %&\vx^1 = f_1(\vx^0)\\
+    %&\vx^2 = f_2(\vx^1)\\
+    %&\ldots\\
+    %&\vx^L = f_L(\vx^{L-1})
+%\end{align*}
+%其中 $x^0\in R^m$, $x^L\in R^n$, $L$是计算的步骤数。
+%这段程序的雅可比 (Jacobian) 矩阵$J_{ij} \equiv \frac{\partial x^L_i}{\partial x_j^0}$是一个$n\times m$的矩阵，其中$x_j^0$和$x_i^L$代表了输入和输出中的一个元素。
+%前向自动微分的链式法则表述为$\frac{\partial \vx^k}{\partial x^0_j} = \frac{\partial \vx^k}{\partial \vx^{k-1}}\frac{\partial \vx^{k-1}}{\partial x^0_j}$，它计算了雅可比矩阵的第$j$列。后向自动微分的链式法则为$\frac{\partial \vx^L_i}{\partial x^{k-1}} = \frac{\partial \vx^L_i}{\partial \vx^{k}}\frac{\partial \vx^{k}}{\partial x^{k-1}}$，它计算了雅可比矩阵的第$i$行。
+%在大多数应用中，计算一行雅可比矩阵比计算一列有用的多，因为
+%后向自动微分的实现难度远高于前向自动微分，因为它的梯度计算方向和计算本身的方向相反，如何回溯中间状态成了一个核心的问题。
+
+    \begin{figure}[t]
+\centering
+\begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\textwidth, trim={1cm 0 0cm 0}, clip]{./forwarddiff.pdf}
+    \caption{前向自动微分}
+\end{subfigure}
+\begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\textwidth, trim={0 0 1cm 0}, clip]{./backward-forward.pdf}
+    \caption{后向自动微分(1)}
+\end{subfigure}
+\begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\textwidth, trim={0 0 1cm 0}, clip]{./backward-backward.pdf}
+    \caption{后向自动微分(2)}
+\end{subfigure}
+        \caption{利用自动微分计算对于计算过程$y = z \sin(x)$的导数$\overline{x}\equiv \frac{\partial y}{\partial x}$和$\overline{z}\equiv \frac{\partial y}{\partial z}$。\label{fig:autodifftypes}} 
+\end{figure}
+
+前向自动微分作用在标量上的梯度的第推公式为
+\begin{align}
+    f(x+\sum\limits^k_{i=1} y_i \epsilon_i) = f(x) + \frac{\partial f(x)}{\partial x} \sum\limits^k_{i=1}y_i\epsilon_i
+\end{align}
+
+其中，$\epsilon_i$正是我们高等数学中的“无穷小量”，而下标$i$代表它对应第$i$个变量。计算中我们只保留到一阶，因此它满足代数规则$\epsilon_i\epsilon_j = 0$。因此，实现一个前向自动微分本质就是实现一种携带无穷小量的特殊变量在函数作用下的变换。
+前向自动微分的计算时间随着需求导的变量的数目线性增长。因为随着变量数目的增加，$\epsilon$的数目线性增加，函数的操作数也随之线性增加。
+其中，$\epsilon_i$正是我们高等数学中的“无穷小量”，而下标$i$代表它对应第$i$个变量。计算中我们只保留到一阶，因此它满足代数规则$\epsilon_i\epsilon_j = 0$。因此，实现一个前向自动微分本质就是实现一种携带无穷小量的特殊变量在函数作用下的变换。
+前向自动微分的计算时间随着需求导的变量的数目线性增长。因为随着变量数目的增加，$\epsilon$的数目线性增加，函数的操作数也随之线性增加。
+
+后向自动微分作用在标量上的梯度的第推公式为
+\begin{align}
+    \overline{x} = \frac{\partial f(x)}{\partial x}\overline{y}
+\end{align}
+其中，$\overline{x}\equiv \frac{\partial \mathcal{L}}{\partial x}$为变量$x$的梯度，这个定义同时隐含了程序最终会输出一个标量$\mathcal{L}$作为损失函数。值得注意的是，为了计算$\frac{\partial f(x)}{\partial x}$，我们往往需要知道额外的一些信息，比如$x$的数值。但是在后向传播过程中，知道中间变量数值并非易事，我们或是把需要的变量放入一个全局的堆栈，或是利用可逆编程写可逆的代码并通过反向执行来获取中间变量数值。
+
 
 \section{时间与空间的权衡}\label{sec:timespace}
 
@@ -193,7 +230,7 @@ x \odot y   =  x + y. \label{eq:max-sum-alg}
 %\begin{footnotesize}
 
 \bibliographystyle{apsrev4-1}
-\bibliography{invc}
+\bibliography{refs}
 
 \newpage
 
