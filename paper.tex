@@ -147,6 +147,7 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 人们设计出了检查点方案，它的核心思路是在确定在程序运行的何时，何处进行状态拷贝。最优的关于时间和空间交换的检查点方案在1992年被Griewank~\cite{Griewank1992}提出，它是很多广义自动微分框架的基础。
  
 回溯中间状态还有另一种做法，那就是可逆计算。可逆计算的代码不需要借助全局堆栈也可以被回溯。但它并非免费的午餐，因为它也需要额外的空间保证不丢弃信息以保证可逆性。它并不像传统代码一样可以随意的擦除或释放内存，可逆计算“释放”内存的方式是通过反计算把变量内容恢复到0状态，也就是用反计算的时间交换空间。
+回溯计算状态问题有着简单的数学模型，它可以被抽象的概括为如下的鹅卵石游戏。
 
 \subsection{鹅卵石游戏}
 鹅卵石游戏是在一维格子上的单人游戏，游戏开始，玩家拥有一堆鹅卵石以及一个一维排布的$G$个格子，标记为$0,1,2\ldots G$，并且在$0$号格子上有一个预先布置的鹅卵石。游戏目标是从自己的堆中取尽可能最少的鹅卵石，或是使用尽可能少的步骤数。
@@ -181,15 +182,16 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 \end{align}
 其中，$T = \eta(t, d)$是初始计算时间。选择适当的$t$或者$d$，在时间和空间维度上的额外复杂度可以都是$\log(T)$。
 
-如图\ref{fig:tradeoff} (b)所示的是可逆计算框架下时间和空间最优交换方案，也被称为Bennett算法。它将程序均匀的分割为$k$等份，先是像前执行$k$步得到结果，然后从最后第$k-1$步运算开始执行反计算以清除中间计算结果释放内存。在每个区块中，可以递归的的分割并
+如图\ref{fig:tradeoff} (b)所示的是可逆计算框架下时间和空间最优交换方案，也被称为Bennett算法。它将程序均匀的分割为$k$等份，先是像前执行$k$步得到结果，然后从最后第$k-1$步运算开始执行反计算以清除中间计算结果释放内存。在每个区块中，递归的分割为$k$等份做同样的计算-拷贝-反计算，直到程序无法再分割。
 \begin{align}\label{eq:rev}
-    T_r = T\left(\frac{T}{S}\right)^{\frac{\ln(2-(1/k))}{\ln k}}, S_r = \frac{k-1}{\ln k}S\log\frac{T}{S}.
+    T_r = (2k-1)^n, S_r = n(k-1).
 \end{align}
+其中，$k$与$n$满足$T = k^n$。可以看出可逆计算的时间复杂度和原时间为多项式关系。
 %Here, the overhead in time is polynomial, which is worse than the treeverse algorithm. The treeverse like partition does not apply here because the first sweep to create initial checkpoints without introducing any space overheads is not possible in reversible computing. The pseudo-code of Bennett's time-space trade-off algorithm is shown in \Lst{lst:bennett}.
 
 \begin{figure}
     \centerline{\includegraphics[width=0.88\columnwidth,trim={0 0cm 0 0cm},clip]{tradeoff.pdf}}
-    \caption{(a) 广义自动微分中常见的Treeverse算法~\cite{Griewank1992}，其中$\eta(\tau, \delta) \equiv \left(\begin{matrix} \tau + \delta \\ \delta \end{matrix}\right)=\frac{(\tau+\delta)!}{\tau!\delta!}$。(b) 可逆计算时空交换的Bennett算法。~\cite{Bennett1973,Levine1990} 其中，$P$和$Q$分别代表了计算和反计算。它的伪代码是代码块\ref{lst:bennett}。}\label{fig:tradeoff}
+    \caption{(a) 广义自动微分中常见的Treeverse算法~\cite{Griewank1992}，其中$\eta(\tau, \delta) \equiv \left(\begin{matrix} \tau + \delta \\ \delta \end{matrix}\right)=\frac{(\tau+\delta)!}{\tau!\delta!}$。(b) 可逆计算时空交换的Bennett算法。~\cite{Bennett1973,Levine1990} 其中，$P$和$Q$分别代表了计算和反计算。}\label{fig:tradeoff}
 \end{figure}
 
 可逆计算的优点是可以很方便的利用可逆性。
@@ -200,8 +202,8 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
     \begin{tabularx}{0.6\textwidth}{cccc}\toprule
         \textbf{方法} & 时间最优 & 空间最优\\
         \hline
-        检查点                           & $\bigO(T)/\bigO(T+S)$   & $\bigO(T^2)/\bigO(S)$   \\
-        可逆编程  & $\bigO(T)/\bigO(T+S)$   & $\bigO(T(\frac{T}{S})^{0.585})/\bigO(S\log(\frac{T}{S}))$ \\
+        检查点                           & $\bigO(T)/\bigO(TS)$   & $\bigO(T^2)/\bigO(S)$   \\
+        可逆编程  & $\bigO(T)/\bigO(TS)$   & $\bigO(T(\frac{T}{S})^{0.585})/\bigO(S\log(\frac{T}{S}))$ \\
         \bottomrule
     \end{tabularx}
     \caption{$T$ and $S$ are the time and space of the original irreversible program. In the "Reverse computing" case, the reversibility of the original program is not utilized.}\label{tbl:timespace}
