@@ -182,7 +182,9 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 \end{align}
 其中，$T = \eta(t, d)$是初始计算时间。选择适当的$t$或者$d$，在时间和空间维度上的额外复杂度可以都是$\log(T)$。
 
-如图\ref{fig:tradeoff} (b)所示的是可逆计算框架下时间和空间最优交换方案，也被称为Bennett算法。它将程序均匀的分割为$k$等份，先是像前执行$k$步得到结果，然后从最后第$k-1$步运算开始执行反计算以清除中间计算结果释放内存。在每个区块中，递归的分割为$k$等份做同样的计算-拷贝-反计算，直到程序无法再分割。
+如图\ref{fig:tradeoff} (b)所示的是可逆计算框架下时间和空间最优交换方案，也被称为Bennett算法。
+它将程序均匀的分割为$k$等份，先是像前执行$k$步得到结果，然后从最后第$k-1$步运算开始执行反计算以清除中间计算结果释放内存。
+在每个区块中，递归的分割为$k$等份做同样的计算-拷贝-反计算，直到程序无法再分割。
 \begin{align}\label{eq:rev}
     T_r = (2k-1)^n, S_r = n(k-1).
 \end{align}
@@ -190,36 +192,24 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 %Here, the overhead in time is polynomial, which is worse than the treeverse algorithm. The treeverse like partition does not apply here because the first sweep to create initial checkpoints without introducing any space overheads is not possible in reversible computing. The pseudo-code of Bennett's time-space trade-off algorithm is shown in \Lst{lst:bennett}.
 
 \begin{figure}
-    \centerline{\includegraphics[width=0.88\columnwidth,trim={0 0cm 0 0cm},clip]{tradeoff.pdf}}
+    \centerline{\includegraphics[width=0.88\columnwidth,trim={0 0cm 0 0cm},clip]{tradeoff2.pdf}}
     \caption{(a) 广义自动微分中常见的Treeverse算法~\cite{Griewank1992}，其中$\eta(\tau, \delta) \equiv \left(\begin{matrix} \tau + \delta \\ \delta \end{matrix}\right)=\frac{(\tau+\delta)!}{\tau!\delta!}$。(b) 可逆计算时空交换的Bennett算法。~\cite{Bennett1973,Levine1990} 其中，$P$和$Q$分别代表了计算和反计算。}\label{fig:tradeoff}
 \end{figure}
 
-可逆计算的优点是可以很方便的利用可逆性。
-
-
-\begin{table}
-    \centering
-    \begin{tabularx}{0.6\textwidth}{cccc}\toprule
-        \textbf{方法} & 时间最优 & 空间最优\\
-        \hline
-        检查点                           & $\bigO(T)/\bigO(TS)$   & $\bigO(T^2)/\bigO(S)$   \\
-        可逆编程  & $\bigO(T)/\bigO(TS)$   & $\bigO(T(\frac{T}{S})^{0.585})/\bigO(S\log(\frac{T}{S}))$ \\
-        \bottomrule
-    \end{tabularx}
-    \caption{$T$ and $S$ are the time and space of the original irreversible program. In the "Reverse computing" case, the reversibility of the original program is not utilized.}\label{tbl:timespace}
-\end{table}
-
-\begin{figure}[t]
+\begin{figure}[h]
 \centering
 \includegraphics[width=0.8\columnwidth]{./fig1.pdf}
     \caption{为了回溯中间状态，时间和空间在两种最优时间-空间交换策略下的关系。(a) 固定横轴为状态回溯的计算时间与原函数计算时间的比值，对比再允许固定时间开销下，内存的额外开销。其中Bennett算法代表了可逆计算下的最优策略，而Treeverse则是传统计算允许的最优策略。(b) 对比Bennett算法与Treeverse算法空间开销的比值。\label{fig:timespace}} 
 \end{figure}
 
+检查点和可逆编程的都可以做到和原程序一样的时间复杂度，但是此时都有$O(TS)$的空间复杂度。只有检查点方案才能做到没有额外的空间开销，但是需要有$\bigO(T^2)$，而可逆计算至少为$\bigO(\log(\frac{T}{S}))$的空间复杂度，对应时间复杂度$\bigO(T(\frac{T}{S})^{0.585})$。
+可逆计算的优点是可以很方便的利用可逆性。当我们固定时间，两种方案的空间消耗关系如图\ref{fig:timespace}(a)和(b)所示。当时间的额外开销较小，两者的差异并不明显，反之则可以有接近一个数量级的差别。
 
 \section{自动微分在物理中的应用}\label{sec:applications}
 \vskip 1.55\baselineskip
 \subsection{地震波的模拟}
 后来在地震学的模拟中，它被用来微分地震波传播的过程~\cite{Symes2007}。
+自动微分也在其中发挥着重要的作用~\cite{Zhu2020}。
 
 \vskip 1.55\baselineskip
 %\subsection{热带（Tropical）张量网络求解自旋玻璃最优构型}
