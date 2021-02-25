@@ -2,15 +2,15 @@ using ForwardDiff
 
 include("point.jl")
 
-function Base.:(+)(a::P3, b::P3)
+@inline function Base.:(+)(a::P3, b::P3)
     P3(a.x + b.x, a.y + b.y, a.z + b.z)
 end
 
-function Base.:(/)(a::P3, b::Real)
+@inline function Base.:(/)(a::P3, b::Real)
     P3(a.x/b, a.y/b, a.z/b)
 end
 
-function Base.:(*)(a::Real, b::P3)
+@inline function Base.:(*)(a::Real, b::P3)
     P3(a*b.x, a*b.y, a*b.z)
 end
 
@@ -31,20 +31,9 @@ function rk4(f, y0::T; Δt, Nt) where T
     history = zeros(T, Nt+1)
     history[1] = y0
     y = y0
-    for i=1:Nt
+    @inbounds for i=1:Nt
         y = rk4_step(f, (i-1)*Δt, y; Δt=Δt)
         history[i+1] = y
     end
     return history
 end
-
-y0 = P3(1.0, 0.0, 0.0)
-@time history = rk4(lorentz, y0; Δt=3e-3, Nt=10000)
-@time g = ForwardDiff.gradient(x->rk4(lorentz, P3(x...); Δt=3e-3, Nt=10000)[end].x, [y0.x, y0.y, y0.z])
-
-using Plots
-plot(getfield.(history[:], :x), getfield.(history[:], :y), getfield.(history[:], :z))
-
-
-using ReverseDiff
-@time g = ReverseDiff.gradient(x->rk4(lorentz, P3(x...); Δt=3e-3, Nt=10000)[end].x, [y0.x, y0.y, y0.z])

@@ -73,28 +73,7 @@ end
     end
 end
 
-y0 = P3(1.0, 0.0, 0.0)
-Nt=10000
-Δt = 3e-3
-@time history = rk4!(lorentz!, zeros(typeof(y0), Nt+1), y0; Δt=3e-3, Nt=Nt)[2];
-using Plots
-plot(getfield.(history, :x), getfield.(history, :y), getfield.(history, :z))
-
-@i function iloss(out, f, history, y0; Δt, Nt)
+@i function iloss!(out, f, history, y0; Δt, Nt)
     rk4!((@const f), history, y0; Δt=Δt, Nt=Nt)
     out += history[end].x
-end
-y0 = P3(1.0, 0.0, 0.0)
-@time g = NiLang.gradient(iloss, (0.0, lorentz!, zeros(typeof(y0), Nt+1), y0); Δt=Δt, Nt=10000, iloss=1)[4];
-
-y0 = P3(1.0, 0.0, 0.0)
-
-@i function lorentz_step!(y!::T, y::T; Δt) where T
-    rk4_step!((@skip! lorentz!), y!, y; Δt, t=0.0)
-end
-
-_, x_last_b, _ = bennett(lorentz_step!, zero(P3{Float64}), y0; k=4, nsteps=Nt, Δt=Δt)
-@i function loss(out, step, y, x; kwargs...)
-    bennett((@skip! step), y, x; kwargs...)
-    out += y[n÷2]
 end
