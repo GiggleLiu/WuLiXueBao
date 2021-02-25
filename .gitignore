@@ -22,3 +22,4 @@ output/
 *.o
 *.out
 *.xdv
+_local/
