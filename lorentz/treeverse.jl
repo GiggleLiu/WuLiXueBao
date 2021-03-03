@@ -84,7 +84,6 @@ using Test, ForwardDiff
 
     for N in [20, 120, 126]
         δ = 4
-        N = 125
         τ = binomial_fit(N, δ)
 
         g_fd = ForwardDiff.gradient(x->rk4(lorentz, P3(x...), nothing; t0=0.0, Δt=3e-3, Nt=N)[end].x, [x0.x, x0.y, x0.z])
@@ -93,16 +92,3 @@ using Test, ForwardDiff
         @test g_fd ≈ [g_tv[2].x, g_tv[2].y, g_tv[2].z]
     end
 end
-
-x0 = P3(1.0, 0.0, 0.0)
-state = Dict{Int,Tuple{Float64,P3{Float64}}}()
-
-δ = 4
-τ = 5
-N = binomial(τ+δ, τ)
-
-g_fd = ForwardDiff.gradient(x->rk4(lorentz, P3(x...), nothing; t0=0.0, Δt=3e-3, Nt=N)[end].x, [x0.x, x0.y, x0.z])
-g = (0.0, P3(1.0, 0.0, 0.0))
-#treeverse!(step_fun, (0.0, x0), state, g, δ, τ; N=N)
-
-
