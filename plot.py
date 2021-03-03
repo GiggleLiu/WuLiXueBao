@@ -36,7 +36,32 @@ class PLT(object):
                 plt.xlabel("$T'/T$")
                 plt.xlim(1,T)
                 plt.legend(fontsize=11)
-                plt.tight_layout()
+            ax1.axhline(y=50, color="C1", ls=':')
+            plt.tight_layout()
+
+    def fig2(self, tp='pdf'):
+        from matplotlib.font_manager import FontProperties
+        ChineseFont2 = FontProperties(fname='/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf')
+        with DataPlt(filename="fig2.%s"%tp, figsize=(7,4)) as dp:
+            ax1 = plt.subplot(121)
+            errors = np.loadtxt("lorentz/data/errors.dat")
+            xs = np.arange(len(errors))
+            plt.plot(xs, errors, lw=1.5)
+            plt.xlabel(u"积分步数", fontproperties = ChineseFont2, fontsize=14)
+            plt.ylabel(u"相对误差", fontproperties = ChineseFont2, fontsize=14)
+            plt.yscale("log")
+            plt.xlim(0,1000)
+            ax2 = plt.subplot(122)
+            data = np.loadtxt("lorentz/data/neuralode_checkpoint.dat")
+            xs = data[:,0]
+            ys = data[:,1]
+            plt.plot(xs, ys, lw=1.5, marker="o")
+            plt.xlabel(u"检查点步长", fontproperties = ChineseFont2, fontsize=14)
+            plt.ylabel(u"相对误差", fontproperties = ChineseFont2, fontsize=14)
+            plt.xlim(0,500)
+            plt.yscale("log")
+
+            plt.tight_layout()
 
 
 fire.Fire(PLT())

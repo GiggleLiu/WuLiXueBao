@@ -1,6 +1,8 @@
 using ForwardDiff
+using DelimitedFiles
 using ForwardDiff: Dual
 using NiLang.AD: GVar
+using LinearAlgebra: norm
 
 include("julia.jl")
 include("reversible_programming.jl")
@@ -48,12 +50,52 @@ function error(Nt::Int; nrepeat=100)
         x1 = rk4(lorentz, x0, nothing; t0=0.0, Δt=Δt, Nt=Nt)[end]
         z0 = Glued(x1, P3(1.0, 0.0, 0.0))
         g_neural_ode = rk4(aug_dynamics, z0, nothing; t0=Δt*Nt, Δt=-Δt, Nt=Nt)[end].data[2]
-        sqrt(sum(abs2, g_fd .- [g_neural_ode.x, g_neural_ode.y, g_neural_ode.z]))
+        norm(g_fd .- [g_neural_ode.x, g_neural_ode.y, g_neural_ode.z])/norm(g_fd)
     end
     median(res)
 end
 
-xs = 1:1000
-errors = error.(xs; nrepeat=10)
-using Plots
-plot(xs, errors; yscale=:log10)
+function dumperrors()
+    xs = 1:1000
+    errors = error.(xs; nrepeat=10)
+    writedlm("data/errors.dat", errors)
+end
+
+function checkpointed_neuralode(; checkpoint_step=200)
+    Nt = 10000
+    ncheckpoint = ceil(Int, Nt / checkpoint_step)
+
+    Δt=3e-3
+    # compute checkpoints
+    x = P3(1.0, 0.0, 0.0)
+    checkpoints = zeros(typeof(x), ncheckpoint)
+    for i=1:ncheckpoint
+        t0 = Δt*(i-1)*checkpoint_step
+        nstep = min(Nt-(i-1)*checkpoint_step, checkpoint_step)
+        x = rk4(lorentz, x, nothing; t0=t0, Δt=Δt, Nt=nstep)[end]
+        checkpoints[i] = x
+    end
+    a = P3(1.0, 0.0, 0.0)
+    local z
+    for i=ncheckpoint:-1:1
+        x = checkpoints[i]
+        if i==ncheckpoint
+            z = Glued(x, a)
+        else
+            z = Glued(x, z.data[2])
+        end
+        nstep = min(Nt-(i-1)*checkpoint_step, checkpoint_step)
+        z = rk4(aug_dynamics, z, nothing; t0=Δt*i*checkpoint_step, Δt=-Δt, Nt=nstep)[end]
+    end
+    z.data[2]
+end
+
+function checkpoint_errors()
+    nsteps = [1,20,50,100,150,200,250,300, 350, 400, 450, 500]
+    res = map(nsteps) do n
+        g1 = checkpointed_neuralode(checkpoint_step=n)
+        g_fd = ForwardDiff.gradient(x->rk4(lorentz, P3(x...), nothing; t0=0.0, Δt=3e-3, Nt=10000)[end].x, [1.0, 0.0, 0.0])
+        norm(g_fd .- [g1.x, g1.y, g1.z])/norm(g_fd)
+    end
+    writedlm("data/neuralode_checkpoint.dat", hcat(nsteps, res))
+end

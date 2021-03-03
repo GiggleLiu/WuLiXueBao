@@ -2,6 +2,7 @@
 \documentclass[A4,twoside,fontset=ubuntu,UTF8]{ctexart}
 %\usepackage{slashbox}\usepackage{makecell}\usepackage{diagbox}\backslashbox
 \usepackage{aappss}
+\usepackage{xeCJK}
 \usepackage{subcaption}
 \usepackage{tabularx}
 %\usepackage{epstopdf}
@@ -19,7 +20,7 @@
 %=================== Text begin here ==============================
 \begin{document}\apsname
 
-\title{自动微分数值计算理论-地震波模拟为例 \fivestar}%{\cfundlink}
+\title{自动微分以及它在物理模拟中的应用\fivestar}%{\cfundlink}
 
 \author{刘金国$^{1)}$ \quad 许开来$^{2)}$}
 
@@ -72,11 +73,11 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 手动定义常用函数导数可以对函数有更加针对性的优化从而保证张量运算的性能，但缺点是，它往往无法满足科学计算的研究中对函数求导的多元化需求。有些时候人们可以通过手动添加一些求导规则来辅助求导，比如在张量网络等模拟中需要用到的复数奇异值分解函数~\cite{Wan2019,Liao2019}。
 但是也有一些时候添加求导规则也无济于事，比如，严格对教化求解基态过程中用到的极大极小本正值求解器~\cite{Xie2020}和模拟变分量子算法中幺正量子线路的求导~\cite{Luo2019}的求导，前者涉及了无法表达为向量函数的稀疏矩阵的构造过程而后者涉及了利用可逆性回溯中间状态。
 还有些时候手动定义的导数可能会出错，尤其是将定义在实数上的规则拓展到复数域的时候。比如奇异值分解函数的求导规则直到2019年，才有人意识到复数的求导规则中有一个规范不变性带来的一项被忽略了~\cite{Wan2019}。
-而广义的自动微分没有这些问题，它微分规则定义在标量的最基础的运算之上，这些基础运算有限而且很难出错。
-    一个很好的描述它与狭义自动微分区别的例子是，当将两个复数相加，广义的自动微分看到的是实部相加和虚部相加这两个操作，而狭义自动微分则需要推导适用于复变函数的Wirtinger导数~\cite{Hirose2003}。
-但广义自动微分的强大威力同时也带来了一些问题，其中最核心的问题是广义的后向自动微分把机器学习中本身就存在的内存占用问题扩大了，
-使得用户不得不直接或间接的面对这些问题。
-为了让研究者们更好的利用自动微分解决物理中的实际问题，本文的向物理学家们介绍自动微分中的几种核心概念以及它在微分模拟地震波传播过程中的应用。
+而广义的自动微分没有这些问题，它微分规则定义在标量的最基础的运算之上，这些基础运算有限而且很难出错。但它在张量运算中的性能却不尽如人意。
+一个很好的描述它与狭义自动微分区别的例子是，当将两个复数相加，广义的自动微分看到的是实部相加和虚部相加这两个操作，而狭义自动微分则需要推导适用于复变函数的Wirtinger导数~\cite{Hirose2003}。
+
+    文章将会介绍如何微分一个含时的物理过程，其难点在于如何微分一个非张量操作为主的积分过程。过去，尽管Neural-ODE~\cite{Chen2018}已经可以解决一部分对积分器的微分，但是这个方法在积分过程可逆性不好的情况下存在较大误差这样的问题。
+于是我们便横向对比了几种自动微分的方案，其中包括Neural-ODE，前向自动微分以及狭义和广义后向自动微分。
 章节\ref{sec:forwardbackward}~ 介绍了两种基本的自动微分模式，前向和后向自动微分。
 章节\ref{sec:timespace}~ 介绍了基于检查点和可逆编程的两种广义后向自动微分的基础理论，尤其两者如何权衡程序的运行时间和空间。
 章节\ref{sec:applications}~ 介绍了不同广义自动微分技术在微分地震波模拟过程中的应用。
@@ -140,6 +141,13 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 这个算法的复杂度对于需要求导的变量数目不敏感，相反因为这里假设了输出变量只有一个，该算法的实际计算量会随着输出变量的数目而线性增加。但考虑到实际应用中，输出往往只有一个，也就是损失函数，因此它在求导$\sim 10^2$以上的输入变量的优化问题中对比前向自动微分拥有优势。
 值得注意的是，对堆栈的操作也带来了正比于计算步骤数 ($\mathcal{O}(T)$)的空间开销以及频繁访问内存带来的性能下降的问题，这是后向自动微分框架设计以及使用的复杂性的来源。
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.6\columnwidth]{./fig2.pdf}
+    \caption{利用Neural-ODE求导时，$l^2$误差与积分步长的关系。其中一个点代表了在该步长下，对$100$个初始点求导得到的$l^2$误差中位数。缺失的数据代表该处出现数值溢出的情况。\label{fig:neuralode-error}} 
+\end{figure}
+
+
 \section{后向自动微分的时间与空间的权衡}\label{sec:timespace}
 
 前面我们提到后向自动微分有一个无法避免的共同问题，那就是如何回溯中间状态。图\ref{fig:autodifftypes} (b), (c)演示的是如何利用堆栈来缓存中间状态并回溯。但其实还有一种更加简单的做法是，那就是仅记录程序的初始状态，当需要获取第$k$个计算状态$s_k$，程序从初始状态$s_0$开始进行$k$步运算。这个算法虽然没有额外的空间开销，但是需要$O(T^2)$的运行时间。
@@ -199,7 +207,7 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.8\columnwidth]{./fig1.pdf}
-    \caption{为了回溯中间状态，时间和空间在两种最优时间-空间交换策略下的关系。(a) 固定横轴为状态回溯的计算时间与原函数计算时间的比值，对比再允许固定时间开销下，内存的额外开销。其中Bennett算法代表了可逆计算下的最优策略，而Treeverse则是传统计算允许的最优策略。(b) 对比Bennett算法与Treeverse算法空间开销的比值。\label{fig:timespace}} 
+    \caption{为了回溯中间状态，时间和空间在两种最优时间-空间交换策略下的关系。(a) 固定横轴为状态回溯的计算时间与原函数计算时间的比值，对比再允许固定时间开销下，内存的额外开销。其中Bennett算法代表了可逆计算下的最优策略，而Treeverse则是传统计算允许的最优策略，黄色点状横线对应$S'/S=50$。(b) 对比Bennett算法与Treeverse算法空间开销的比值。\label{fig:timespace}} 
 \end{figure}
 
 检查点和可逆编程的都可以做到和原程序一样的时间复杂度，但是此时都有$O(TS)$的空间复杂度。只有检查点方案才能做到没有额外的空间开销，但是需要有$\bigO(T^2)$，而可逆计算至少为$\bigO(\log(\frac{T}{S}))$的空间复杂度，对应时间复杂度$\bigO(T(\frac{T}{S})^{0.585})$。
@@ -264,21 +272,23 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 
 \newpage
 
-\title{English Title $^{\ast}$}%{\efundlink}
+\title{Automatic differention in physics simulation $^{\ast}$}%{\efundlink}
 
 \efund{Project supported by the State Key Development Program for Basic Research of China (Grant No. 2011CB00000), the National Natural Science Foundation of China (Grant Nos. 123456, 567890), and the National High Technology Research and Development Program of China (Grant No. 2011AA06Z000). \\}
 
 
-\author{Guan Yun-Chang$^{1)2)}$ \quad  Liu Bei$^{1)\dag}$ \quad  Zhuge Liang$^{2)}$}
 
-\email{aaa@bbb.ccc  }
+\author{Jin-Guo Liu$^{1)}$ \quad Kai-Lai Xu$^{2)}$}
+
+\address{1)}{Harvard University, Cambridge \quad 02138}
+\address{2)}{Stanford University, Stanford \quad 94305}
+
+\email{jinguoliu@g.harvard.edu}
 %\email \emailddag
 
+\eaddress{1)}{Massachusetts Hall, Cambridge, MA 02138}
 
-\eaddress{1)}{State Key Laboratory of Quantum Optics and Quantum Optics  Devices,
-Institute of Opto-Electronics, Shanxi University, Taiyuan 030006, China}
-
-\eaddress{2)}{Department of Physics, Tsinghua University, Beijing 100084, China}
+\eaddress{2)}{450 Serra Mall, Stanford, CA 94305}
 
 \eabstract{}
 
