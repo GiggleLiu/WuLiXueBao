@@ -5,11 +5,26 @@ include("reversible_programming.jl")
 PROG_COUNTER = Ref(0)   # (2k-1)^n
 PEAK_MEM = Ref(0)    # n*(k-1)+2
 
-function mid(δ, τ, σ, ϕ)
-    ceil(Int, (δ*σ + τ*ϕ)/(τ+δ))
+function binomial_fit(N::Int, δ::Int)
+    τ = 1
+    while N > binomial(τ+δ, τ)
+        τ += 1
+    end
+    return τ
+end
+
+function mid(δ, τ, σ, ϕ, d)
+    κ = ceil(Int, (δ*σ + τ*ϕ)/(τ+δ))
+    if κ >= ϕ && d > 0
+        κ = max(σ+1, ϕ-1)
+    end
+    return κ
 end
 
 function treeverse!(f, s::T, state::Dict{Int,T}, g, δ, τ; N=binomial(τ+δ, τ)) where T
+    if N > binomial(τ+δ, τ)
+        error("please input a larger `τ` and `δ` so that `binomial(τ+δ, τ) >= N`!")
+    end
     treeverse!(f, s, state, g, δ, τ, 0, 0, N)
 end
 function treeverse!(f, s::T, state::Dict{Int,T}, g, δ, τ, β, σ, ϕ) where T
@@ -24,16 +39,17 @@ function treeverse!(f, s::T, state::Dict{Int,T}, g, δ, τ, β, σ, ϕ) where T
         end
     end
 
-    κ = mid(δ, τ, σ, ϕ)
+    κ = mid(δ, τ, σ, ϕ, δ)
     while τ>0 && κ < ϕ
         g = treeverse!(f, s, state, g, δ, τ, σ, κ, ϕ)
         τ -= 1
         ϕ = κ
-        κ = mid(δ, τ, σ, ϕ)
+        κ = mid(δ, τ, σ, ϕ, δ)
     end
 
-    ϕ-σ > 1 && error("treeverse fails")
-    # @show σ+1  # visit in backward order
+    if ϕ-σ != 1
+        error("treeverse fails!")
+    end
     q = s
     s = f(s)
     g = grad_func(f, s, q, g)
@@ -66,15 +82,16 @@ using Test, ForwardDiff
     x0 = P3(1.0, 0.0, 0.0)
     state = Dict{Int,Tuple{Float64,P3{Float64}}}()
 
-    δ = 4
-    τ = 5
-    N = binomial(τ+δ, τ)
-    N = 30
+    for N in [20, 120, 126]
+        δ = 4
+        N = 125
+        τ = binomial_fit(N, δ)
 
-    g_fd = ForwardDiff.gradient(x->rk4(lorentz, P3(x...), nothing; t0=0.0, Δt=3e-3, Nt=N)[end].x, [x0.x, x0.y, x0.z])
-    g = (0.0, P3(1.0, 0.0, 0.0))
-    g_tv = treeverse!(step_fun, (0.0, x0), state, g, δ, τ; N=N)
-    @test g_fd ≈ [g_tv[2].x, g_tv[2].y, g_tv[2].z]
+        g_fd = ForwardDiff.gradient(x->rk4(lorentz, P3(x...), nothing; t0=0.0, Δt=3e-3, Nt=N)[end].x, [x0.x, x0.y, x0.z])
+        g = (0.0, P3(1.0, 0.0, 0.0))
+        g_tv = treeverse!(step_fun, (0.0, x0), state, g, δ, τ; N=N)
+        @test g_fd ≈ [g_tv[2].x, g_tv[2].y, g_tv[2].z]
+    end
 end
 
 x0 = P3(1.0, 0.0, 0.0)
@@ -86,6 +103,6 @@ N = binomial(τ+δ, τ)
 
 g_fd = ForwardDiff.gradient(x->rk4(lorentz, P3(x...), nothing; t0=0.0, Δt=3e-3, Nt=N)[end].x, [x0.x, x0.y, x0.z])
 g = (0.0, P3(1.0, 0.0, 0.0))
-treeverse!(step_fun, (0.0, x0), state, g, δ, τ; N=N)
+#treeverse!(step_fun, (0.0, x0), state, g, δ, τ; N=N)
 
 
