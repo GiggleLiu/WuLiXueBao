@@ -2,8 +2,14 @@ using NiLang.AD: GVar
 include("julia.jl")
 include("reversible_programming.jl")
 
-PROG_COUNTER = Ref(0)   # (2k-1)^n
-PEAK_MEM = Ref(0)    # n*(k-1)+2
+struct TreeverseLog
+    fcalls::Vector{NTuple{4,Int}}  # τ, δ, function index f_i := s_{i-1} -> s_{i}, length should be `(2k-1)^n`
+    gcalls::Vector{NTuple{4,Int}}  # τ, δ, function index
+    checkpoints::Vector{NTuple{4,Int}}  # τ, δ, state index
+    depth::Base.RefValue{Int}
+    peak_mem::Base.RefValue{Int}  # should be `n*(k-1)+2`
+end
+TreeverseLog() = TreeverseLog(NTuple{4,Int}[], NTuple{4,Int}[], NTuple{4,Int}[], Ref(0), Ref(0))
 
 function binomial_fit(N::Int, δ::Int)
     τ = 1
@@ -21,27 +27,32 @@ function mid(δ, τ, σ, ϕ, d)
     return κ
 end
 
-function treeverse!(f, s::T, state::Dict{Int,T}, g, δ, τ; N=binomial(τ+δ, τ)) where T
+function treeverse!(f, s::T, g; δ, N, τ=binomial_fit(N,δ)) where T
+    state = Dict{Int,typeof(s)}()
     if N > binomial(τ+δ, τ)
         error("please input a larger `τ` and `δ` so that `binomial(τ+δ, τ) >= N`!")
     end
-    treeverse!(f, s, state, g, δ, τ, 0, 0, N)
+    logger = TreeverseLog()
+    g = treeverse!(f, s, state, g, δ, τ, 0, 0, N, logger)
+    return g, logger
 end
-function treeverse!(f, s::T, state::Dict{Int,T}, g, δ, τ, β, σ, ϕ) where T
+function treeverse!(f, s::T, state::Dict{Int,T}, g, δ, τ, β, σ, ϕ, logger) where T
+    logger.depth[] += 1
     if σ > β
         δ -= 1
         # snapshot s
         state[β] = s
-        PEAK_MEM[] = max(PEAK_MEM[], length(state))
+        push!(logger.checkpoints, (τ, δ, logger.depth[], β))
+        logger.peak_mem[] = max(logger.peak_mem[], length(state))
         for j=β:σ-1
             s = f(s)
-            PROG_COUNTER[] += 1
+            push!(logger.fcalls, (τ, δ, logger.depth[], j+1))
         end
     end
 
     κ = mid(δ, τ, σ, ϕ, δ)
     while τ>0 && κ < ϕ
-        g = treeverse!(f, s, state, g, δ, τ, σ, κ, ϕ)
+        g = treeverse!(f, s, state, g, δ, τ, σ, κ, ϕ, logger)
         τ -= 1
         ϕ = κ
         κ = mid(δ, τ, σ, ϕ, δ)
@@ -53,7 +64,8 @@ function treeverse!(f, s::T, state::Dict{Int,T}, g, δ, τ, β, σ, ϕ) where T
     q = s
     s = f(s)
     g = grad_func(f, s, q, g)
-    PROG_COUNTER[] += 1
+    push!(logger.fcalls, (τ, δ, logger.depth[], ϕ))
+    push!(logger.gcalls, (τ, δ, logger.depth[], ϕ))
     if σ>β
         # retrieve s
         s = pop!(state, β)
@@ -80,15 +92,11 @@ end
 using Test, ForwardDiff
 @testset "treeverse gradient" begin
     x0 = P3(1.0, 0.0, 0.0)
-    state = Dict{Int,Tuple{Float64,P3{Float64}}}()
 
     for N in [20, 120, 126]
-        δ = 4
-        τ = binomial_fit(N, δ)
-
         g_fd = ForwardDiff.gradient(x->rk4(lorentz, P3(x...), nothing; t0=0.0, Δt=3e-3, Nt=N)[end].x, [x0.x, x0.y, x0.z])
         g = (0.0, P3(1.0, 0.0, 0.0))
-        g_tv = treeverse!(step_fun, (0.0, x0), state, g, δ, τ; N=N)
+        g_tv, log = treeverse!(step_fun, (0.0, x0), g; δ=4, N=N)
         @test g_fd ≈ [g_tv[2].x, g_tv[2].y, g_tv[2].z]
     end
 end
