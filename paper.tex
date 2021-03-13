@@ -14,6 +14,8 @@
 
 
 \usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\usepackage{setspace}
+\usepackage{tcolorbox}
 \renewcommand{\algorithmcfname}{算法}
 \SetKwInput{KwInput}{输入}
 \SetKwInput{KwResult}{输出}
@@ -42,16 +44,18 @@
 %\address{3)}{}
 
 \abstract{自动微分是利用计算机自动化求导的技术，最近几十年因为被用于机器学习研究而被很多人了解。
-如今越来越多的物理学者意识到高效，高效的，自动化的求导可以对很多物理问题的求解提供新的思路，其中物理模拟问题尤其重要。
+如今越来越多的物理学者意识到高效，高效的，自动化的求导可以对很多物理问题的求解提供新的思路。
+其中自动微分在物理模拟问题中的应用尤为重要且具有挑战性。
 本文介绍如何将自动微分技术运用到物理模拟的求导中，介绍了共轭态法，前向自动微分，后向自动微分以及可逆计算自动微分的基本概念，
 并横向对比了它们在物理模拟中的优势和劣势。}
 
-\keywords{自动微分，科学计算，编程语言}
+\keywords{自动微分，科学计算，可逆计算，treeverse，物理模拟}
 
 % https://ufn.ru/en/pacs/all/
 % 02.60.Pn numerical optimization
 % 02.30.Jr Partial differential equations
-\pacs{02.60.Pn, 02.30.Jr}
+% 91.30.−f Seismology
+\pacs{02.60.Pn, 02.30.Jr, 91.30.−f}
 
 \cfund{}
 
@@ -77,14 +81,14 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 而且如果可以用流行的机器学习框架，比如脸书公司开发的PyTorch和谷歌公司开发的TesnorFlow来编写生成波函数的代码，人们可以避免手动推导导数的麻烦，从而可以把波函数的表达变得更加自由。
 而现在，随着人们对微分的认知更加深刻，波函数不光可以表达为以张量运算为主体的神经元网络，还可以是几乎任意的计算机程序。
 %一段通用的代码总可以被分解成一些加减乘除这样的基础解析函数,知晓基础函数的自动微分规则，计算机可以通过链式法则用计算机推导出整个程序的导数。
-    除了这个例子，科学家们利用方便的，自动化的计算机辅助求导还解决了很多包括量子模拟~\cite{Luo2019}，张量网络~\cite{Liao2019}，组合优化~\cite{Liu2020}，海洋学~\cite{Heimbach2005}和地震学~\cite{Symes2007,Zhu2020}等领域中的问题。
+    除了这个例子，科学家们利用方便的，自动化的计算机辅助求导还解决了很多包括量子模拟~\cite{Luo2019}，张量网络~\cite{Liao2019}，组合优化~\cite{Liu2020}等领域中的问题。
 甚至是一些非解析的蒙特卡洛抽样过程，人们也设计出了一些办法对其自动化的求导~\cite{Zhang2019}。
 
-虽然有这么多成功的例子，但当人们把自动微分技术应用到物理模拟过程，比如电路仿真，海洋学和地震学等，常见的机器学习库经常无法胜任。
+虽然有这么多成功的例子，但当人们把自动微分技术应用到物理模拟过程，比如电路仿真，海洋学~\cite{Heimbach2005}和地震学~\cite{Symes2007,Zhu2020}等，常见的机器学习库经常无法直接胜任。
 一方面现有的机器学习框架中的自动微分需要存储程序每一步计算的部分状态以便在后向传播过程中取出用于计算局域梯度。
 而另一方面，物理模拟过程经常包含物理量对时间的积分，积分步长很小而步骤数很多，导致记录中间状态对空间的需求巨大。
-为了解决自动微分对空间的需求，人们可以利用积分器的可逆性（Leap frog）在某些特定时间反演不变的哈密顿量问题中通过反转积分过程进行回溯状态或者假设在较短时间内可逆性可以保证（共轭态法）~\cite{Plessix2006,Chen2018}。
-由于大多数问题中的积分器并不能保证可逆性，共轭态法往往存在一定的系统误差。
+为了解决自动微分对空间的需求，人们可以假设在较短时间内可逆来回溯状态，也被称为共轭态法~\cite{Plessix2006,Chen2018}。
+事实上，除了Leap frog积分器在时间反演不变的哈密顿量问题中可以做到严格时间反演对称，大多数问题中的积分器并不能保证可逆性，所以共轭态法往往存在一定的由积分器带来的系统性误差。
 后来，有人把机器学习中的treeverse算法带入到了物理模拟的状态回溯中，使得自动微分不再有积分器不可逆带来的系统误差。
 同时，treeverse算法可以在对数时间和空间下做到状态的严格回溯。
 本文提出了第三种节省空间的方案，那就是利用可逆编程的方案利用Bennett算法来进行状态回溯，
@@ -99,9 +103,9 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 %而广义的自动微分没有这些问题，它微分规则定义在标量的最基础的运算之上，这些基础运算有限而且很难出错。但它在张量运算中的性能却不尽如人意。
 %一个很好的描述它与狭义自动微分区别的例子是，当将两个复数相加，广义的自动微分看到的是实部相加和虚部相加这两个操作，而狭义自动微分则需要推导适用于复变函数的Wirtinger导数~\cite{Hirose2003}。
 
-章节\ref{sec:forwardbackward}~ 介绍了两种基本的自动微分模式，前向和后向自动微分。
-章节\ref{sec:timespace}~ 介绍了基于检查点和可逆编程的两种广义后向自动微分的基础理论，尤其两者如何权衡程序的运行时间和空间。
-章节\ref{sec:applications}~ 介绍了不同广义自动微分技术在微分地震波模拟过程中的应用。
+章节\ref{sec:forwardbackward}~ 介绍了共轭态法和自动微分的基本原理。
+章节\ref{sec:timespace}~ 介绍了基于检查点和可逆编程的两种后向自动微分的基础理论，尤其两者如何权衡程序的运行时间和空间。
+章节\ref{sec:applications}~ 介绍了不同自动微分技术在地震波模拟过程中的应用。
 
 \section{对物理模拟的自动微分方法}\label{sec:forwardbackward}
 
@@ -118,21 +122,24 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
     共轭态方法~\cite{Plessix2006,Chen2018}是专门针对积分过程反向传播的传统方法。在研究中，人们发现积分过程的导数的反向传播同样是一个积分过程，只不过方向相反。
     于是人们通过构造一个可以同时更新原函数和导数的拓展函数，以对拓展函数的逆向积分的形式完成导数的计算，如算法~\ref{alg:adjointstate}所示。
 \begin{algorithm}
+    \setstretch{1.35}
     \SetAlgoLined
     \DontPrintSemicolon
     \SetKwProg{Fn}{function}{}{end}
     \KwInput{动力学参数$\theta$，开始时间$t_0$，结束时间$t_n$，末态$s_n$，以及需要回传的导数$\partial \mathcal{L}/\partial s_n$}
     \KwResult{$\frac{\partial \mathcal{L}}{\partial s_0}$, $\frac{\partial \mathcal{L}}{\partial \theta}$, $\frac{\partial \mathcal{L}}{\partial t_0}$, $\frac{\partial \mathcal{L}}{\partial t_n}$}
         $\frac{\partial \mathcal{L}}{\partial t_n} = \frac{\partial \mathcal{L}}{\partial s_n}^Tf(s_n,t_n,\theta)$ \Comment*[r]{计算损失函数对终了时间的导数}
-        \Fn{\rm aug\_dynamics([$s$, $a$, -, -], $t$, $\theta$) \hspace{11em}$\#$ 定义对拓展动力学函数}{$s'=f(s, t, \theta)$ \; \textbf{return} [$s'$, $-a^T\frac{\partial s'}{\partial s}$, $-a^T\frac{\partial s'}{\partial \theta}$, $-a^T\frac{\partial s'}{\partial t}$]}
+        \Fn{\rm aug\_dynamics([$s$, $a$, -, -], $t$, $\theta$) \hspace{14em}$\#$ 定义拓展动力学函数}{$s'=f(s, t, \theta)$ \; \textbf{return} [$s'$, $-a^T\frac{\partial s'}{\partial s}$, $-a^T\frac{\partial s'}{\partial \theta}$, $-a^T\frac{\partial s'}{\partial t}$]}
         $S_0$ = [$s_n$, $\frac{\partial \mathcal{L}}{\partial s_n}$, $0$, $-\frac{\partial \mathcal{L}}{\partial t_n}]$ \Comment*[r]{计算拓展动力学函数的初始状态}
         [$s_0$, $\frac{\partial \mathcal{L}}{\partial s_0}$, $\frac{\partial \mathcal{L}}{\partial \theta}$, $\frac{\partial \mathcal{L}}{\partial t_0}$] = ODESolve($S_0$, aug\_dynamics, $t_n$, $t_0$, $\theta$) \Comment*[r]{对拓展动力学反向积分}
     \caption{共轭态法}\label{alg:adjointstate}
 \end{algorithm}
 
+该算法的描述来自文献~\cite{Chen2018}，其中可以找到详细的推导过程，这里对原算法中的符号做了替换以方便读者理解。
+
 
 \subsection{前向自动微分}
-    自动微分可以分为两大类，一种叫做前向传播（Forward propagation）~\cite{Wengert1964}，一种叫做后向传播（Backward propagation）~\cite{Boltyanski1960}。
+    自动微分可以分为两大类，分别是前向传播（Forward propagation）~\cite{Wengert1964}和后向传播（Backward propagation）~\cite{Boltyanski1960}。
     \begin{figure}[t]
 \centering
 \begin{subfigure}[b]{0.32\textwidth}
@@ -150,20 +157,18 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
     \includegraphics[width=\textwidth, trim={0 3cm 1cm 1cm}, clip]{./backward-backward.pdf}
     \caption{\small 后向自动微分中的梯度反向传播}
 \end{subfigure}
-        \caption{利用自动微分计算对于计算过程$y = z \sin(x)$的导数$\overline{x}\equiv \frac{\partial y}{\partial x}$和$\overline{z}\equiv \frac{\partial y}{\partial z}$。其中圆圈代表函数，线代表变量，箭头代表运算方向，$\Sigma$是一个用于缓存中间计算结果的全局堆栈而\texttt{push}和\texttt{pop}分别代表了对该堆栈的入栈和出栈操作。\label{fig:autodifftypes}} 
+        \caption{利用自动微分计算对于计算过程$y = z * \sin(x)$的导数$\overline{x}\equiv \frac{\partial y}{\partial x}$和$\overline{z}\equiv \frac{\partial y}{\partial z}$。其中圆圈代表函数，线代表变量，箭头代表运算方向，$\Sigma$是一个用于缓存中间计算结果的全局堆栈而\texttt{push}和\texttt{pop}分别代表了对该堆栈的入栈和出栈操作。\label{fig:autodifftypes}} 
 \end{figure}
 
-让我们从图\ref{fig:autodifftypes}中演示的例子出发看看它们有何异同。(a)所示的是前向自动微分在运算中会携带一种特殊的变量$\epsilon^i$，它正是我们高等数学中的“无穷小量”，而上标$i$代表它对应第$i$个变量。
-计算中我们只保留到一阶，因此它满足代数规则$\epsilon^i\epsilon^j = 0$。
-前向自动微分作用在标量上的梯度的第推公式为
+前向自动微分和数学中的链式法则推导导数的方法极为相似。它通修改程序运算中的变量，使之携带若干无穷小量$\epsilon^i$，并通过这个无穷小量的运算规则完成对程序的求导。当函数$f$作用于一个标量，它的运算规则变为
 \begin{align}
     f(x+\sum\limits^k_{i=1} y_i \epsilon^i) = f(x) + \frac{\partial f(x)}{\partial x} \sum\limits^k_{i=1}y_i\epsilon^i
 \end{align}
-
-因此，实现一个前向自动微分本质就是实现一种携带无穷小量的特殊变量在函数作用下的变换。
-前向自动微分的计算时间随着需求导的变量的数目线性增长。因为随着变量数目的增加，$\epsilon$的数目线性增加，函数的操作数也随之线性增加。
-其中，$\epsilon^i$正是我们高等数学中的“无穷小量”，而下标$i$代表它对应第$i$个变量。计算中我们只保留到一阶，因此它满足代数规则$\epsilon^i\epsilon^j = 0$。因此，实现一个前向自动微分本质就是实现一种携带无穷小量的特殊变量在函数作用下的变换。
-前向自动微分的计算时间随着需求导的变量的数目线性增长。因为随着变量数目的增加，$\epsilon$的数目线性增加，函数的操作数也随之线性增加。
+这里的上标$i$代表它对应第$i$个变量。容易验证这个无穷小量的运算规则与数学分析中的无穷小量并无差别。程序中仅记录一阶小量的系数，因此无穷小量满足运算规则$\epsilon^i\epsilon^j = 0$。
+值得注意的是，前向自动微分的计算时间随着需求导的变量的数目线性增长。因为随着变量数目的增加，$\epsilon^i$的数目线性增加，函数的操作数也随之线性增加。
+图\ref{fig:autodifftypes} (a)所示的是对函数$y=z *\sin(x)$的前向自动微分，这个函数仅仅包含两步运算$\sin$与$*$。程序中每个变量都记录了三个域，分别是\texttt{(变量本身, $\epsilon^x$的系数, $\epsilon^z$)}的系数，每当经过一个函数便更新数值和两个无穷小量的系数，因此整个函数的运行空间和一次求导的变量的个数也成正比。
+但在实践中，由于内存大小有限且需要求导变量较多的情况下，一般不会一次性的对所有变量都求导。而是重复运行多次计算过程，一次只处理若干个变量的导数这样分批次求导。
+例子中这样简单的表达式对于人类来说处理起来也毫无难度，但真实的程序可能会包含数以亿计的这样的基础操作，虽然结果依然是解析的，但是人们很难通过人力得到解析的导数表达式。然而计算机恰恰很擅长这样繁琐但是规则简单的任务。
 
 \subsection{后向自动微分}
 图 (b) 和 (c) 展示了后向自动微分的前向过程和后向过程，前向过程中函数除了运算本身，还会将部分中间结果放入一个全局堆栈$\Sigma$中，
@@ -192,23 +197,38 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 回溯中间状态还有另一种做法，那就是可逆计算。可逆计算的代码不需要借助全局堆栈也可以被回溯。但它并非免费的午餐，因为它也需要额外的空间保证不丢弃信息以保证可逆性。它并不像传统代码一样可以随意的擦除或释放内存，可逆计算“释放”内存的方式是通过反计算把变量内容恢复到0状态，也就是用反计算的时间交换空间。
 回溯计算状态问题有着简单的数学模型，它可以被抽象的概括为如下的鹅卵石游戏。
 
+\begin{table}\centering
+    \begin{tabularx}{0.7\textwidth}{Xcc}\toprule
+        \textbf{方法} & 时间 & 空间\\
+        \hline
+        共轭态法                     &  $\bigO(T)$          & $\bigO(TS)$\\
+        前向自动微分                 &  $\bigO(NT)$         & $\bigO(S)$  \\
+        基于检查点的后向自动微分     &  $\bigO(T\log T)$    & $\bigO(S\log T)$   \\
+        基于可逆计算的后向自动微分   &  $\bigO(T^{1+\epsilon})$ & $\bigO(S\log T)$ \\
+        \bottomrule
+    \end{tabularx}
+    \caption{不同方案的时间与空间复杂度。其中共轭态法考虑了缓存部分中间结果以保证反向积分的正确性，因此空间会有与时间线性增长。前向自动微分中的$N$代表了需要求导的参数个数。可逆计算中的时间复杂度为多项式，且$\epsilon > 0$。}
+\end{table}
+
 \subsection{鹅卵石游戏}
 鹅卵石游戏是在一维格子上的单人游戏，游戏开始，玩家拥有一堆鹅卵石以及一个一维排布的$G$个格子，标记为$0,1,2\ldots G$，并且在$0$号格子上有一个预先布置的鹅卵石。游戏目标是从自己的堆中取尽可能最少的鹅卵石，或是使用尽可能少的步骤数。
 
 它最初被提出描述可逆计算中的时间与空间的权衡，其规则为
-\begin{enumerate}
-    \item 放置规则：如果第$i$个格子上有鹅卵石，则可以从自己堆中取一个鹅卵石放置于第$i+1$个格子中，
-    \item 回收规则：仅当第$i$个格子上有鹅卵石，才可以把第$i+1$个格子上的鹅卵石取下放入自己的堆中，
-    \item 结束条件：第$G$个格子上有鹅卵石。
-\end{enumerate}
+\begin{tcolorbox}[width=\textwidth, title=鹅卵石游戏-可逆计算版本]
+    \setstretch{1.5}
+    \textit{放置规则}：如果第$i$个格子上有鹅卵石，则可以从自己堆中取一个鹅卵石放置于第$i+1$个格子中，\\
+    \textit{回收规则}：仅当第$i$个格子上有鹅卵石，才可以把第$i+1$个格子上的鹅卵石取下放入自己的堆中，\\
+    \textit{结束条件}：第$G$个格子上有鹅卵石。
+\end{tcolorbox}
 
 我们稍微修改可以得到检查点版本的规则，它为用户增加了一支画笔用于涂鸦格点，其规则描述为
-\begin{enumerate}
-    \item 放置规则：如果第$i$个格子上有鹅卵石，则可以从自己堆中取一个鹅卵石放置于第$i+1$个格子中，
-    \item 回收规则：可以随意把格子上的鹅卵石取下放入自己的堆中，且不计入步骤数，
-    \item 涂鸦规则：当第$i$个格子有鹅卵石，且第$i+1$个格子被涂鸦或$i=G$，可以涂鸦第$i$个格子，涂鸦不记入步骤数，
-    \item 结束条件：涂鸦完所有的格点。
-\end{enumerate}
+\begin{tcolorbox}[width=\textwidth, title=鹅卵石游戏-检查点版本]
+    \setstretch{1.5}
+    \textit{放置规则}：如果第$i$个格子上有鹅卵石，则可以从自己堆中取一个鹅卵石放置于第$i+1$个格子中，\\
+    \textit{回收规则}：可以随意把格子上的鹅卵石取下放入自己的堆中，收回鹅卵石不计步骤数，\\
+    \textit{涂鸦规则}：当第$i$个格子有鹅卵石，且第$i+1$个格子被涂鸦或$i=G$，可以涂鸦第$i$个格子，涂鸦不记入步骤数，\\
+    \textit{结束条件}：涂鸦完所有的格点。
+\end{tcolorbox}
 
 鹅卵石游戏是对计算过程的时间和空间交换的一种理想化的描述，
 它假设了每个计算步骤都需要固定的内存开销以及时间开销，并用一个鹅卵石代表了一个单位的内存，
@@ -285,7 +305,7 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 
 \section*{致谢}
 
-感谢北京大学力学系某某教授和某某博士以及某某的讨论.
+感谢王磊老师的讨论。
 
 
 \section*{附录A1}
@@ -336,8 +356,8 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 \small  To determine the probe made of amino acids arranged in a linear chain and joined together by peptide bonds between the carboxyl and amino groups of adjacent amino acid residues. The sequence of amino acids in a protein is defined by a gene and encoded in the genetic code. This can happen either
 before the protein is used in the cell, or as part of control mechanisms.
 
-\ekeywords{Keyword1, Keyword2, Keyword3, Keyword4 \\}
+\ekeywords{automatic differentiation, scientific computing, reversible programming, treeverse, physics simulation}
 
-\epacs{02.10.Yn, 33.15.Vb, 98.52.Cf, 78.47.dc}
+\epacs{02.60.Pn, 02.30.Jr, 91.30.−f}
 
 \end{document}
