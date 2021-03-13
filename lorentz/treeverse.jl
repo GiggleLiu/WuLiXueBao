@@ -83,9 +83,7 @@ function step_fun(x)
 end
 
 function grad_func(::typeof(step_fun), y, x, g)
-    _, gs = (~i_step_fun)(
-        (GVar(y[1], g[1]), P3(GVar(y[2].x, g[2].x), GVar(y[2].y, g[2].y), GVar(y[2].z,g[2].z))),
-        (GVar(x[1]), GVar(x[2])))
+    _, gs = (~i_step_fun)(GVar(y, g), GVar(x))
     NiLang.AD.grad(gs)
 end
 
