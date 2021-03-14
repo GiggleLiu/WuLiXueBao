@@ -49,7 +49,7 @@
 本文介绍如何将自动微分技术运用到物理模拟的求导中，介绍了共轭态法，前向自动微分，后向自动微分以及可逆计算自动微分的基本概念，
 并横向对比了它们在物理模拟中的优势和劣势。}
 
-\keywords{自动微分，科学计算，可逆计算，treeverse，物理模拟}
+\keywords{自动微分，科学计算，可逆计算，Treeverse，物理模拟}
 
 % https://ufn.ru/en/pacs/all/
 % 02.60.Pn numerical optimization
@@ -87,12 +87,12 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 虽然有这么多成功的例子，但当人们把自动微分技术应用到物理模拟过程，比如电路仿真，海洋学~\cite{Heimbach2005}和地震学~\cite{Symes2007,Zhu2020}等，常见的机器学习库经常无法直接胜任。
 一方面现有的机器学习框架中的自动微分需要存储程序每一步计算的部分状态以便在后向传播过程中取出用于计算局域梯度。
 而另一方面，物理模拟过程经常包含物理量对时间的积分，积分步长很小而步骤数很多，导致记录中间状态对空间的需求巨大。
-为了解决自动微分对空间的需求，人们可以假设在较短时间内可逆来回溯状态，也被称为共轭态法~\cite{Plessix2006,Chen2018}。
+为了解决自动微分对空间的需求，人们可以假设在较短时间内积分器可逆来回溯状态，也被称为共轭态法~\cite{Plessix2006,Chen2018}。
 事实上，除了Leap frog积分器在时间反演不变的哈密顿量问题中可以做到严格时间反演对称，大多数问题中的积分器并不能保证可逆性，所以共轭态法往往存在一定的由积分器带来的系统性误差。
-后来，有人把机器学习中的treeverse算法带入到了物理模拟的状态回溯中，使得自动微分不再有积分器不可逆带来的系统误差。
-同时，treeverse算法可以在对数时间和空间下做到状态的严格回溯。
+后来，有人把机器学习中的Treeverse算法带入到了物理模拟的状态回溯中，使得自动微分不再有积分器不可逆带来的系统误差。
+同时，Treeverse算法可以在对数时间和空间下做到状态的严格回溯。
 本文提出了第三种节省空间的方案，那就是利用可逆编程的方案利用Bennett算法来进行状态回溯，
-并横向对比了共轭态 (Adjoint-State)方法，前向自动微分以及基于treeverse算法和可逆计算的后向自动微分在处理物理模拟问题中的优劣。
+并横向对比了共轭态 (Adjoint-State)方法，前向自动微分以及基于Treeverse算法和可逆计算的后向自动微分在处理物理模拟问题中的优劣。
 
 %那物理学家们是否只需要奉行“拿来主义”，仅阅读机器学习库的文档，就可以很好的驾驭自动微分呢？
 %并不完全是的，当大家谈论自动微分的时候有“狭义”和“广义”之分，而主流机器学习库仅涵盖了前者。
@@ -109,12 +109,17 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 
 \section{对物理模拟的自动微分方法}\label{sec:forwardbackward}
 
-    考虑一个ODE方程
+    物理模拟过程的常见求解方案是将偏微分方程的空间部分离散并作差分处理~\cite{Grote2010}，将其转换为一个对时间的常微分方程方程
     $$\frac{d s}{d t} = f(s, t, \theta)$$
-其中$s$为状态，$t$为时间，$\theta$为控制参数。以及一个ODE方程求解器
+其中$s$为状态，$t$为时间，$\theta$为控制参数。假设我们已经拥有一个常微分方程方程求解器来得到末态
 
-    $$s_n = \text{ODESolve}(s_0, f, t_0, t_n, \theta)$$
-其中$t_0$和$t_n$分别为初始和末了状态，$s_0$为初始状态。这个ODE求解器在求解过程中会把时间离散化，作$n$步叠代过程。最后我们还可以定义一个损失函数$\mathcal{L} = {\rm loss}(s_n)$。
+\begin{align}
+    \begin{split}
+    s_n &= \text{ODESolve}(s_0, f, t_0, t_n, \theta)\\
+        &= (s_{i+1} = {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t) ~\text{for $i=1,2, \ldots, n$})
+    \end{split}
+\end{align}
+其中$t_0$和$s_0$分别为初始时间和状态，$t_n=t_0+n\Delta t$和$s_n$为末了时间和状态。这个常微分方程求解器在求解过程中会把时间离散化，作$n$步叠代，每步仅做从时刻$t_i$到时刻$t_{i}+\Delta t$的演化。最后我们还可以定义一个损失函数$\mathcal{L} = {\rm loss}(s_n)$。
     自动微分的目标则是求解损失量对参数的导数$\frac{\partial \mathcal{L}}{\partial s_0}$, $\frac{\partial \mathcal{L}}{\partial \theta}$, $\frac{\partial \mathcal{L}}{\partial t_0}$和$\frac{\partial \mathcal{L}}{\partial t_n}$。
     %$$s_{i+1} = s_{i} + f(s_i, t, \theta)$$
 
@@ -126,12 +131,12 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
     \SetAlgoLined
     \DontPrintSemicolon
     \SetKwProg{Fn}{function}{}{end}
-    \KwInput{动力学参数$\theta$，开始时间$t_0$，结束时间$t_n$，末态$s_n$，以及需要回传的导数$\partial \mathcal{L}/\partial s_n$}
+    \KwInput{动力学参数$\theta$，开始时间$t_0$，结束时间$t_n$，末态$s_n$，以及需要回传的导数$\frac{\partial \mathcal{L}}{\partial s_n}$}
     \KwResult{$\frac{\partial \mathcal{L}}{\partial s_0}$, $\frac{\partial \mathcal{L}}{\partial \theta}$, $\frac{\partial \mathcal{L}}{\partial t_0}$, $\frac{\partial \mathcal{L}}{\partial t_n}$}
         $\frac{\partial \mathcal{L}}{\partial t_n} = \frac{\partial \mathcal{L}}{\partial s_n}^Tf(s_n,t_n,\theta)$ \Comment*[r]{计算损失函数对终了时间的导数}
-        \Fn{\rm aug\_dynamics([$s$, $a$, -, -], $t$, $\theta$) \hspace{14em}$\#$ 定义拓展动力学函数}{$s'=f(s, t, \theta)$ \; \textbf{return} [$s'$, $-a^T\frac{\partial s'}{\partial s}$, $-a^T\frac{\partial s'}{\partial \theta}$, $-a^T\frac{\partial s'}{\partial t}$]}
-        $S_0$ = [$s_n$, $\frac{\partial \mathcal{L}}{\partial s_n}$, $0$, $-\frac{\partial \mathcal{L}}{\partial t_n}]$ \Comment*[r]{计算拓展动力学函数的初始状态}
-        [$s_0$, $\frac{\partial \mathcal{L}}{\partial s_0}$, $\frac{\partial \mathcal{L}}{\partial \theta}$, $\frac{\partial \mathcal{L}}{\partial t_0}$] = ODESolve($S_0$, aug\_dynamics, $t_n$, $t_0$, $\theta$) \Comment*[r]{对拓展动力学反向积分}
+        \Fn{\rm aug\_dynamics([$s$, $a$, -, -], $t$, $\theta$) \hspace{14em}$\#$ 定义拓展动力学函数}{$s'=f(s, t, \theta)$ \; \textbf{return} ($s'$, $-a^T\frac{\partial s'}{\partial s}$, $-a^T\frac{\partial s'}{\partial \theta}$, $-a^T\frac{\partial s'}{\partial t}$)}
+        $S_0$ = ($s_n$, $\frac{\partial \mathcal{L}}{\partial s_n}$, $0$, $-\frac{\partial \mathcal{L}}{\partial t_n}$) \Comment*[r]{计算拓展动力学函数的初始状态}
+        ($s_0$, $\frac{\partial \mathcal{L}}{\partial s_0}$, $\frac{\partial \mathcal{L}}{\partial \theta}$, $\frac{\partial \mathcal{L}}{\partial t_0}$) = ODESolve($S_0$, aug\_dynamics, $t_n$, $t_0$, $\theta$) \Comment*[r]{对拓展动力学反向积分}
     \caption{共轭态法}\label{alg:adjointstate}
 \end{algorithm}
 
@@ -157,7 +162,7 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
     \includegraphics[width=\textwidth, trim={0 3cm 1cm 1cm}, clip]{./backward-backward.pdf}
     \caption{\small 后向自动微分中的梯度反向传播}
 \end{subfigure}
-        \caption{利用自动微分计算对于计算过程$y = z * \sin(x)$的导数$\overline{x}\equiv \frac{\partial y}{\partial x}$和$\overline{z}\equiv \frac{\partial y}{\partial z}$。其中圆圈代表函数，线代表变量，箭头代表运算方向，$\Sigma$是一个用于缓存中间计算结果的全局堆栈而\texttt{push}和\texttt{pop}分别代表了对该堆栈的入栈和出栈操作。\label{fig:autodifftypes}} 
+        \caption{利用自动微分计算对于计算过程$y = z * \sin(x)$的导数$\overline{x}\equiv \frac{\partial y}{\partial x}$和$\overline{z}\equiv \frac{\partial y}{\partial z}$。其中圆圈代表函数，线代表变量，箭头代表运算方向，$\Sigma$是一个用于缓存中间计算结果的全局堆栈（一种以先进后出的存储结构）而\texttt{push}和\texttt{pop}分别代表了对该堆栈的入栈（存储）和出栈（取出）操作。}\label{fig:autodifftypes} 
 \end{figure}
 
 前向自动微分和数学中的链式法则推导导数的方法极为相似。它通修改程序运算中的变量，使之携带若干无穷小量$\epsilon^i$，并通过这个无穷小量的运算规则完成对程序的求导。当函数$f$作用于一个标量，它的运算规则变为
@@ -166,36 +171,104 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 \end{align}
 这里的上标$i$代表它对应第$i$个变量。容易验证这个无穷小量的运算规则与数学分析中的无穷小量并无差别。程序中仅记录一阶小量的系数，因此无穷小量满足运算规则$\epsilon^i\epsilon^j = 0$。
 值得注意的是，前向自动微分的计算时间随着需求导的变量的数目线性增长。因为随着变量数目的增加，$\epsilon^i$的数目线性增加，函数的操作数也随之线性增加。
-图\ref{fig:autodifftypes} (a)所示的是对函数$y=z *\sin(x)$的前向自动微分，这个函数仅仅包含两步运算$\sin$与$*$。程序中每个变量都记录了三个域，分别是\texttt{(变量本身, $\epsilon^x$的系数, $\epsilon^z$)}的系数，每当经过一个函数便更新数值和两个无穷小量的系数，因此整个函数的运行空间和一次求导的变量的个数也成正比。
+图~\ref{fig:autodifftypes} (a)所示的是对函数$y=z *\sin(x)$的前向自动微分，这个函数仅仅包含两步运算$\sin$与$*$。程序中每个变量都记录了三个域，分别是\texttt{(变量本身, $\epsilon^x$的系数, $\epsilon^z$)}的系数，每当经过一个函数便更新数值和两个无穷小量的系数，因此整个函数的运行空间和一次求导的变量的个数也成正比。
 但在实践中，由于内存大小有限且需要求导变量较多的情况下，一般不会一次性的对所有变量都求导。而是重复运行多次计算过程，一次只处理若干个变量的导数这样分批次求导。
 例子中这样简单的表达式对于人类来说处理起来也毫无难度，但真实的程序可能会包含数以亿计的这样的基础操作，虽然结果依然是解析的，但是人们很难通过人力得到解析的导数表达式。然而计算机恰恰很擅长这样繁琐但是规则简单的任务。
+在前向自动微分框架中，单步的对控制参数$\theta$的前向自动微分可表达为
+$$(s_{i+1}, \frac{\partial s_{i+1}}{\partial \theta}) = ({\rm ODEStep}(s_{i}, t_i, \theta, \Delta t), \frac{\partial s_{i+1}}{\partial s_i} \frac{\partial s_{i}}{\partial \theta})$$
+其中第二个域为一阶无穷小量的系数（导数），由于状态$s_i, s_{i+1}$和控制参数$\theta$均可包含多个变量，上述偏微分均解释为雅可比行列式，
+真实的计算中，并不需要构造出具体的局域雅可比矩阵$\frac{\partial s_{i+1}}{\partial s_i}$并做复杂度较高的矩阵乘法，而是利用代码的变换或对基本运算符的重载来实现。
+%因为一些如\texttt{ForwardDiff}这样优秀的前向自动微分库，我们并不需要手动实现这些链式法则以及基础微分规则。
 
 \subsection{后向自动微分}
-图 (b) 和 (c) 展示了后向自动微分的前向过程和后向过程，前向过程中函数除了运算本身，还会将部分中间结果放入一个全局堆栈$\Sigma$中，
-而后向过程将这些缓存的结果出栈并利用如下递推公式计算导数
+图~\ref{fig:autodifftypes} (b) 和 (c) 用同样的例子展示了后向自动微分的前向计算过程和梯度反向传播过程，前向计算过程中除了运算本身，还会将部分运算的中间结果通过\texttt{push($\Sigma$, x)}操作压栈将一个变量\texttt{x}其放入一个全局堆栈$\Sigma$中，
+而后向过程将这些缓存的结果通过\texttt{x = pop($\Sigma$)}操作出栈并利用如下递推公式计算导数
 \begin{align}
-    \overline{x} = \frac{\partial f(x)}{\partial x}\overline{y}
+    \overline{x} = \overline{y}\frac{\partial f(x)}{\partial x}
 \end{align}
-其中，$\overline{\cdot}$代表了相应变量的梯度$\frac{\partial \mathcal{L}}{\partial \cdot}$，这个定义同时隐含了程序最终会输出一个标量$\mathcal{L}$作为损失函数。
-这个算法的复杂度对于需要求导的变量数目不敏感，相反因为这里假设了输出变量只有一个，该算法的实际计算量会随着输出变量的数目而线性增加。但考虑到实际应用中，输出往往只有一个，也就是损失函数，因此它在求导$\sim 10^2$以上的输入变量的优化问题中对比前向自动微分拥有优势。
-值得注意的是，对堆栈的操作也带来了正比于计算步骤数 ($\mathcal{O}(T)$)的空间开销以及频繁访问内存带来的性能下降的问题，这是后向自动微分框架设计以及使用的复杂性的来源。
+其中，$\overline{\cdot}$代表了损失对相应变量的微分$\frac{\partial \mathcal{L}}{\partial \cdot}$，这里$\mathcal{L}$为标量损失函数，且$\frac{\partial \mathcal L}{\partial \mathcal L}\equiv 1$。
+导数回传的计算复杂度与需要求导的变量数目无关，因此它在求导$\sim 10^2$以上的输入变量的优化问题中对比前向自动微分拥有优势，这也是为什么所有的主流自动微分框架都采用梯度后向传播的模式。
+后向自动微分也有缺点，那就是向堆栈中存储数据带来了正比于计算步骤数 ($\mathcal{O}(T)$)的额外空间开销以及频繁访问内存带来的性能下降的问题，这是后向自动微分框架设计的复杂性的来源。
+在求解常微分方程的自动微分过程中，其前向计算过程（左侧）和反向传播过程（右侧）分别为
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.6\columnwidth]{./fig2.pdf}
-    \caption{利用Neural-ODE求导时，$l^2$误差与积分步长的关系。其中一个点代表了在该步长下，对$100$个初始点求导得到的$l^2$误差中位数。缺失的数据代表该处出现数值溢出的情况。\label{fig:neuralode-error}} 
-\end{figure}
+\begin{minipage}{0.45\textwidth}
+\begin{align*}
+    &s_{i+1} = {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t)\\
+    &\texttt{push}(\Sigma, s_{i})
+\end{align*}
+\end{minipage}
+\begin{minipage}{0.45\textwidth}
+\begin{align*}
+    s_{i} &= \texttt{pop}(\Sigma)\\
+    \overline{s_i} &= \overline{s_{i+1}}\frac{\partial s_{i+1}}{\partial s_{i}}
+\end{align*}
+\end{minipage}
+
+如何设计算法在保证对计算状态逆序的访问的前提下，减少计算中使用的堆栈$\Sigma$的大小，是我们接下来要讨论的一个至关重要的问题。
+一种节省空间方案叫做检查点方案，比起将每一步的计算状态保存到堆栈，有时候我们也可以通过“重计算”的方式来得到一部分中间状态。
+
+\begin{minipage}{0.45\textwidth}
+\begin{align*}
+    &\texttt{push}(\Sigma, s_i)\\
+    &s_{i+1} = {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t)\\
+    &s_{i+2} = {\rm ODEStep}(s_{i+1}, t_i, \theta, \Delta t)\\
+    &\texttt{push}(\Sigma, s_{i+2})
+\end{align*}
+\end{minipage}
+\begin{minipage}{0.45\textwidth}
+\begin{align*}
+    &s_{i+2} = \texttt{pop}(\Sigma)\\
+    &\overline{s_{i+2}} = \overline{s_{i+3}}\frac{\partial s_{i+3}}{\partial s_{i+2}}\\
+    &s_{i} = \texttt{read}(\Sigma, \texttt{i})\\
+    &s_{i+1} = {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t)  ~\# ~\text{重计算}\\
+    &\overline{s_{i+1}} = \overline{s_{i+2}}\frac{\partial s_{i+2}}{\partial s_{i+1}}\\
+    &s_{i} = \texttt{pop}(\Sigma)\\
+    &\overline{s_i} = \overline{s_{i+1}}\frac{\partial s_{i+1}}{\partial s_{i}}
+\end{align*}
+\end{minipage}
+
+这里，\texttt{read}函数仅读取数据而不对数据出栈。在正向计算过程中，我们选择性的没有存储状态$s_{i+1}$。
+在反向计算过程中，由于状态$s_{i+1}$不存在，程序通过读取$s_{i}$的状态重新计算得到$s_{i+1}$。
+通过这种方式，堆栈的大小可以减少1。如何最优的选择存储和释放状态成了检查点方案的关键，
+这个最优方案在1992年被Griewank~\cite{Griewank1992}提出，被成为Treeverse算法，该算法仅需对数多个存储空间，即表~\ref{tbl:complexity}所示的空间复杂度$O(S\log(T))$，其中$S$为单个状态的空间大小，$T$为时间，或这里的步数。以及对数的额外时间开销，即时间复杂度$O(T\log(T))$。
+
+还有一种可以保证变量方案叫做可逆编程，意思是让代码在结构上具有可逆性，比如在可逆编程语言的框架下书写代码。
+可逆的书写意味着赋值和清除变量这些常见的操作不再被允许，取而代之的是累加 (\texttt{+=}) 和累减 (\texttt{-=})，从内存空“借”一段空内存 ($\leftarrow$) 和将一个已经清除的变量“归还”给内存 ($\rightarrow$)等。
+可逆计算赋予用户更高的自由度去控制内存的分配与释放，以如下的程序计算过程（左侧）和它的反过程（右侧）为例
+
+\begin{minipage}{0.45\textwidth}
+\begin{align*}
+    &s_{i+1} \leftarrow 0\\
+    &s_{i+1} \mathrel{+}= {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t)\\
+    &s_{i+2} \leftarrow 0\\
+    &s_{i+2} \mathrel{+}= {\rm ODEStep}(s_{i+1}, t_i, \theta, \Delta t)\\
+    &s_{i+1} \mathrel{-}= {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t) ~\#~\text{反计算}\\
+    &s_{i+1} \rightarrow 0 ~\# ~\text{归还}~ s_{i+1}
+\end{align*}
+\end{minipage}
+\begin{minipage}{0.45\textwidth}
+\begin{align*}
+    &s_{i+1} \leftarrow 0\\
+    &s_{i+1} \mathrel{+}= {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t) ~\# ~\text{计算}~ s_{i+1}\\
+    &s_{i+2} \mathrel{-}= {\rm ODEStep}(s_{i+1}, t_i, \theta, \Delta t)\\
+    &s_{i+2} \rightarrow 0\\
+    &s_{i+1} \mathrel{-}= {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t)\\
+    &s_{i+1} \rightarrow 0
+\end{align*}
+\end{minipage}
+
+这里我们先是从状态$s_i$经过两步计算得到了状态$s_{i+2}$，传统的做法将会有三个变量入栈，
+但是这里我们多了一种选择，那就是利用已有信息将一部分变量反计算为$0$，并将它“归还”给系统。
+最优的可逆计算框架下的时间与空间的权衡一般认为是Bennett算法，其空间的额外开销也是对数，但是时间的额外开销变为了多项式，即表~\ref{tbl:complexity}所示的时间复杂度$O(T^{1+\epsilon})$，其中$\epsilon > 0$，高于最优检查点方案。
 
 \section{后向自动微分的时间与空间的权衡}\label{sec:timespace}
+Treeverse算法和Bennett算法分别是源代码后向自动微分（一种通过源代码变换实现的反向传播技术）和可逆计算中核心的算法。为了更好的理解这些算法以方便更好的对物理模拟过程微分，我们用鹅卵石游戏模型来进行说明。
 
-在处理很多ODE的时候，由于计算步骤数很多，在使用后向自动微分时缓存所有的中间变量会使得计算空间开销巨大。
-如何在一定的运行时间限制下，尽可能少的空间开销回溯中间状态成了其中的核心问题。
-图\ref{fig:autodifftypes} (b), (c)演示的是如何利用堆栈来缓存中间状态并回溯。但其实还有一种更加简单的做法是，那就是仅记录程序的初始状态，当需要获取第$k$个计算状态$s_k$，程序从初始状态$s_0$开始进行$k$步运算。这个算法虽然没有额外的空间开销，但是需要$O(T^2)$的运行时间。
-但很多实践中，不管是$O(T^2)$的时间开销或者是$O(T)$的空间开销都不实际，人们更需要的是一个均衡的计算时间和计算空间的方案。
-人们设计出了检查点方案，它的核心思路是在确定在程序运行的何时，何处进行状态拷贝。最优的关于时间和空间交换的检查点方案在1992年被Griewank~\cite{Griewank1992}提出，它是很多广义自动微分框架的基础。
+%其实还有一种更加简单的做法是，那就是仅记录程序的初始状态，当需要获取第$k$个计算状态$s_k$，程序从初始状态$s_0$开始进行$k$步运算。这个算法虽然没有额外的空间开销，但是需要$O(T^2)$的运行时间。
+%但很多实践中，不管是$O(T^2)$的时间开销或者是$O(T)$的空间开销都不实际，人们更需要的是一个均衡的计算时间和计算空间的方案。
+%人们设计出了检查点方案，它的核心思路是在确定在程序运行的何时，何处进行状态拷贝。最优的关于时间和空间交换的检查点方案在1992年被Griewank~\cite{Griewank1992}提出，它是很多广义自动微分框架的基础。
  
-回溯中间状态还有另一种做法，那就是可逆计算。可逆计算的代码不需要借助全局堆栈也可以被回溯。但它并非免费的午餐，因为它也需要额外的空间保证不丢弃信息以保证可逆性。它并不像传统代码一样可以随意的擦除或释放内存，可逆计算“释放”内存的方式是通过反计算把变量内容恢复到0状态，也就是用反计算的时间交换空间。
-回溯计算状态问题有着简单的数学模型，它可以被抽象的概括为如下的鹅卵石游戏。
+%回溯中间状态还有另一种做法，那就是可逆计算。可逆计算的代码不需要借助全局堆栈也可以被回溯。但它并非免费的午餐，因为它也需要额外的空间保证不丢弃信息以保证可逆性。它并不像传统代码一样可以随意的擦除或释放内存，可逆计算“释放”内存的方式是通过反计算把变量内容恢复到0状态，也就是用反计算的时间交换空间。
 
 \begin{table}\centering
     \begin{tabularx}{0.7\textwidth}{Xcc}\toprule
@@ -207,7 +280,7 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
         基于可逆计算的后向自动微分   &  $\bigO(T^{1+\epsilon})$ & $\bigO(S\log T)$ \\
         \bottomrule
     \end{tabularx}
-    \caption{不同方案的时间与空间复杂度。其中共轭态法考虑了缓存部分中间结果以保证反向积分的正确性，因此空间会有与时间线性增长。前向自动微分中的$N$代表了需要求导的参数个数。可逆计算中的时间复杂度为多项式，且$\epsilon > 0$。}
+    \caption{不同方案的时间与空间复杂度。其中共轭态法考虑了缓存部分中间结果以保证反向积分的正确性，因此空间会有与时间线性增长。前向自动微分中的$N$代表了需要求导的参数个数。可逆计算中的时间复杂度为多项式，且$\epsilon > 0$。}\label{tbl:complexity}
 \end{table}
 
 \subsection{鹅卵石游戏}
@@ -252,7 +325,7 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
     T_r = (2k-1)^n, S_r = n(k-1).
 \end{align}
 其中，$k$与$n$满足$T = k^n$。可以看出可逆计算的时间复杂度和原时间为多项式关系。
-%Here, the overhead in time is polynomial, which is worse than the treeverse algorithm. The treeverse like partition does not apply here because the first sweep to create initial checkpoints without introducing any space overheads is not possible in reversible computing. The pseudo-code of Bennett's time-space trade-off algorithm is shown in \Lst{lst:bennett}.
+%Here, the overhead in time is polynomial, which is worse than the Treeverse algorithm. The Treeverse like partition does not apply here because the first sweep to create initial checkpoints without introducing any space overheads is not possible in reversible computing. The pseudo-code of Bennett's time-space trade-off algorithm is shown in \Lst{lst:bennett}.
 
 \begin{figure}
     \centerline{\includegraphics[width=0.88\columnwidth,trim={0 0cm 0 0cm},clip]{tradeoff2.pdf}}
@@ -267,18 +340,37 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 
 \begin{figure}
     \centerline{\includegraphics[width=0.88\columnwidth,trim={0 0cm 0 0cm},clip]{bennett_treeverse_fingerprint.pdf}}
-    \caption{(a) treeverse算法 ($t=5$, $d=3$) 和 (b) Bennett算法 ($k=4$, $n=3$) 中，函数的执行过程，其中横向是鹅卵石游戏的格子，纵向随着进入treeverse函数或者Bennett函数的次数向下延展。}\label{fig:tradeoff}
+    \caption{(a) Treeverse算法 ($t=5$, $d=3$) 和 (b) Bennett算法 ($k=4$, $n=3$) 中，函数的执行过程，其中横向是鹅卵石游戏的格子，纵向随着进入Treeverse函数或者Bennett函数的次数向下延展。}\label{fig:tradeoff}
 \end{figure}
 
 
 检查点和可逆编程的都可以做到和原程序一样的时间复杂度，但是此时都有$O(TS)$的空间复杂度。只有检查点方案才能做到没有额外的空间开销，但是需要有$\bigO(T^2)$，而可逆计算至少为$\bigO(\log(\frac{T}{S}))$的空间复杂度，对应时间复杂度$\bigO(T(\frac{T}{S})^{0.585})$。
 可逆计算的优点是可以很方便的利用可逆性。当我们固定时间，两种方案的空间消耗关系如图\ref{fig:timespace}(a)和(b)所示。当时间的额外开销较小，两者的差异并不明显，反之则可以有接近一个数量级的差别。
 
-\section{自动微分在物理中的应用}\label{sec:applications}
+\section{自动微分在物理模拟中的应用}\label{sec:applications}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.6\columnwidth]{./fig2.pdf}
+    \caption{利用共轭态方法求导时，$l^2$误差与积分步长的关系。其中一个点代表了在该步长下，对$100$个随机初始点计算得到的中位数。缺失的数据代表该处出现数值溢出的情况。\label{fig:neuralode-error}} 
+\end{figure}
+
+
 \vskip 1.55\baselineskip
 \subsection{地震波的模拟}
+Perfectly matched layer (PML)方程是模拟波在介质中运动的一种准确可靠的方案，
+在介质中，波场$u(\vec x, t)$的传播可描述为
+\begin{align}
+    \begin{cases}
+    u_{tt} - \nabla\cdot(c^2\nabla u) = f & t>0,\\
+    u = u_0 & t=0,\\
+    u_t = v_0 & t=0.
+    \end{cases}
+\end{align}
+经过对空间的离散化处理
 后来在地震学的模拟中，它被用来微分地震波传播的过程~\cite{Symes2007}。
 自动微分也在其中发挥着重要的作用~\cite{Zhu2020}。
+~\cite{Grote2010}
 
 \vskip 1.55\baselineskip
 %\subsection{热带（Tropical）张量网络求解自旋玻璃最优构型}
@@ -356,7 +448,7 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 \small  To determine the probe made of amino acids arranged in a linear chain and joined together by peptide bonds between the carboxyl and amino groups of adjacent amino acid residues. The sequence of amino acids in a protein is defined by a gene and encoded in the genetic code. This can happen either
 before the protein is used in the cell, or as part of control mechanisms.
 
-\ekeywords{automatic differentiation, scientific computing, reversible programming, treeverse, physics simulation}
+\ekeywords{automatic differentiation, scientific computing, reversible programming, Treeverse, physics simulation}
 
 \epacs{02.60.Pn, 02.30.Jr, 91.30.−f}
 
