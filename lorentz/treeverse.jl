@@ -2,14 +2,21 @@ using NiLang.AD: GVar
 include("julia.jl")
 include("reversible_programming.jl")
 
+struct TreeverseAction
+    action::Symbol
+    τ::Int
+    δ::Int
+    step::Int
+    depth::Int
+end
+
 struct TreeverseLog
-    fcalls::Vector{NTuple{4,Int}}  # τ, δ, function index f_i := s_{i-1} -> s_{i}, length should be `(2k-1)^n`
-    gcalls::Vector{NTuple{4,Int}}  # τ, δ, function index
-    checkpoints::Vector{NTuple{4,Int}}  # τ, δ, state index
+    actions::Vector{TreeverseAction}
     depth::Base.RefValue{Int}
     peak_mem::Base.RefValue{Int}  # should be `n*(k-1)+2`
 end
-TreeverseLog() = TreeverseLog(NTuple{4,Int}[], NTuple{4,Int}[], NTuple{4,Int}[], Ref(0), Ref(0))
+TreeverseLog() = TreeverseLog(TreeverseAction[], Ref(0), Ref(0))
+Base.push!(tlog::TreeverseLog, args...) = push!(tlog.actions, TreeverseAction(args..., tlog.depth[]))
 
 function binomial_fit(N::Int, δ::Int)
     τ = 1
@@ -22,6 +29,7 @@ end
 function mid(δ, τ, σ, ϕ, d)
     κ = ceil(Int, (δ*σ + τ*ϕ)/(τ+δ))
     if κ >= ϕ && d > 0
+        @show "@@@"
         κ = max(σ+1, ϕ-1)
     end
     return κ
@@ -42,11 +50,11 @@ function treeverse!(f, s::T, state::Dict{Int,T}, g, δ, τ, β, σ, ϕ, logger) 
         δ -= 1
         # snapshot s
         state[β] = s
-        push!(logger.checkpoints, (τ, δ, logger.depth[], β))
+        push!(logger, :store, τ, δ, β)
         logger.peak_mem[] = max(logger.peak_mem[], length(state))
         for j=β:σ-1
             s = f(s)
-            push!(logger.fcalls, (τ, δ, logger.depth[], j+1))
+            push!(logger, :call, τ, δ, j+1)
         end
     end
 
@@ -64,11 +72,12 @@ function treeverse!(f, s::T, state::Dict{Int,T}, g, δ, τ, β, σ, ϕ, logger) 
     q = s
     s = f(s)
     g = grad_func(f, s, q, g)
-    push!(logger.fcalls, (τ, δ, logger.depth[], ϕ))
-    push!(logger.gcalls, (τ, δ, logger.depth[], ϕ))
+    push!(logger, :call, τ, δ, ϕ)
+    push!(logger, :grad, τ, δ, ϕ)
     if σ>β
         # retrieve s
         s = pop!(state, β)
+        push!(logger, :fetch, τ, δ, β)
     end
     return g
 end

@@ -42,14 +42,14 @@ function treeverse_finger_printing(N::Int, δ)
     eb1 = bondstyle(:line, linewidth(LW))
     eb2 = bondstyle(:line, linewidth(LW), stroke("red"))
     img = canvas() do
-        for (τ, δ, d, i) in log.fcalls
-            eb1 >> ((i-1, d), (i, d))
+        for act in filter(act->act.action == :call, log.actions)
+            eb1 >> ((act.step-1, act.depth), (act.step, act.depth))
         end
-        for (τ, δ, d, i) in log.checkpoints
-            nb >> (i, d)
+        for act in filter(act->act.action == :store, log.actions)
+            nb >> (act.step, act.depth)
         end
-        for (τ, δ, d, i) in log.gcalls
-            eb2 >> ((Float64(i-1), d+0.3), (Float64(i), d+0.3))
+        for act in filter(act->act.action == :grad, log.actions)
+            eb2 >> ((Float64(act.step-1), act.depth+0.3), (Float64(act.step), act.depth+0.3))
         end
     end
     τ = binomial_fit(N, δ)
@@ -85,4 +85,4 @@ function plot_all(; fname=nothing)
 end
 
 #plot_all()
-plot_all(fname=joinpath(dirname(@__DIR__), "bennett_treeverse_fingerprint"))
+#plot_all(fname=joinpath(dirname(@__DIR__), "bennett_treeverse_fingerprint"))
