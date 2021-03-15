@@ -28,7 +28,7 @@
 \newcommand{\bigO}{{\mathcal{O}}}
 \newcommand{\ra}[1]{\renewcommand{\arraystretch}{#1}}
 \newcommand{\tikzcircle}[2][red,fill=red]{\tikz[baseline=-0.5ex]\draw[#1,radius=#2] (0cm,0.04cm) circle ;}
-\definecolor{mygray}{rgb}{0.2392, 0.2392, 0.2392}
+\definecolor{mygray}{rgb}{0.3333, 0.3333, 0.3333}
 
 \abovedisplayshortskip 0 pt plus 3pt
 \belowdisplayshortskip 6 pt plus 2pt minus 2pt
@@ -169,13 +169,13 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
         \caption{利用自动微分计算对于计算过程$y = z * \sin(x)$的导数$\overline{x}\equiv \frac{\partial y}{\partial x}$和$\overline{z}\equiv \frac{\partial y}{\partial z}$。其中圆圈代表函数，线代表变量，箭头代表运算方向，$\Sigma$是一个用于缓存中间计算结果的全局堆栈（一种以先进后出的存储结构）而\texttt{push}和\texttt{pop}分别代表了对该堆栈的入栈（存储）和出栈（取出）操作。}\label{fig:autodifftypes} 
 \end{figure}
 
-前向自动微分和数学中的链式法则推导导数的方法极为相似。它通修改程序运算中的变量，使之携带若干无穷小量$\epsilon^i$，并通过这个无穷小量的运算规则完成对程序的求导。当函数$f$作用于一个标量，它的运算规则变为
+前向自动微分和数学中的链式法则推导导数的方法极为相似。它通修改程序运算中的变量，使之携带若干无穷小量$\epsilon^i$，并通过这个无穷小量的运算完成对程序的求导。比如当函数$f$作用于一个标量，它的运算规则变为
 \begin{align}
     f(x+\sum\limits^k_{i=1} y_i \epsilon^i) = f(x) + \frac{\partial f(x)}{\partial x} \sum\limits^k_{i=1}y_i\epsilon^i
 \end{align}
 这里的上标$i$代表它对应第$i$个变量。容易验证这个无穷小量的运算规则与数学分析中的无穷小量并无差别。程序中仅记录一阶小量的系数，因此无穷小量满足运算规则$\epsilon^i\epsilon^j = 0$。
 值得注意的是，前向自动微分的计算时间随着需求导的变量的数目线性增长。因为随着变量数目的增加，$\epsilon^i$的数目线性增加，函数的操作数也随之线性增加。
-图~\ref{fig:autodifftypes} (a)所示的是对函数$y=z *\sin(x)$的前向自动微分，这个函数仅仅包含两步运算$\sin$与$*$。程序中每个变量都记录了三个域，分别是\texttt{(变量本身, $\epsilon^x$的系数, $\epsilon^z$)}的系数，每当经过一个函数便更新数值和两个无穷小量的系数，因此整个函数的运行空间和一次求导的变量的个数也成正比。
+图~\ref{fig:autodifftypes} (a)所示的是对函数$y=z *\sin(x)$的前向自动微分，这个函数仅仅包含两步运算$\sin$与$*$。程序中每个变量都记录了三个域，分别是\texttt{(变量本身, $\epsilon^x$的系数, $\epsilon^z$的系数)}，每当经过一个函数便同时更新数值和两个无穷小量的系数，因此整个函数的运行空间和一次求导的变量的个数也成正比。
 但在实践中，由于内存大小有限且需要求导变量较多的情况下，一般不会一次性的对所有变量都求导。而是重复运行多次计算过程，一次只处理若干个变量的导数这样分批次求导。
 例子中这样简单的表达式对于人类来说处理起来也毫无难度，但真实的程序可能会包含数以亿计的这样的基础操作，虽然结果依然是解析的，但是人们很难通过人力得到解析的导数表达式。然而计算机恰恰很擅长这样繁琐但是规则简单的任务。
 在前向自动微分框架中，单步的对控制参数$\theta$的前向自动微分可表达为
@@ -208,8 +208,10 @@ $$(s_{i+1}, \frac{\partial s_{i+1}}{\partial \theta}) = ({\rm ODEStep}(s_{i}, t_
 \end{align*}
 \end{minipage}
 
-如何设计算法在保证对计算状态逆序的访问的前提下，减少计算中使用的堆栈$\Sigma$的大小，是我们接下来要讨论的一个至关重要的问题。
-一种节省空间方案叫做检查点方案，比起将每一步的计算状态保存到堆栈，有时候我们也可以通过“重计算”的方式来得到一部分中间状态。
+如何设计算法在保证对计算状态逆序的访问的前提下，减少计算中使用的堆栈$\Sigma$的大小，是我们在章节~\ref{sec:timespace}中要讨论的一个至关重要的问题。
+
+\section{后向自动微分的时间与空间的权衡}\label{sec:timespace}
+在反向自动微分中，比起将每一步的计算状态保存到堆栈，有时候我们也可以通过“重计算”的方式来得到一部分中间状态。
 
 \begin{minipage}{0.45\textwidth}
 \begin{align*}
@@ -264,7 +266,6 @@ $$(s_{i+1}, \frac{\partial s_{i+1}}{\partial \theta}) = ({\rm ODEStep}(s_{i}, t_
 这里我们先是从状态$s_i$经过两步计算得到了状态$s_{i+1}$和$s_{i+2}$。由于$s_{i+1}$在接下来的运算中不会被用到，我们可以利用已有信息$s_i$将它反计算为$0$，并将存储空间“归还”给系统。
 最优的可逆计算框架下的时间与空间的权衡一般认为是Bennett算法，其空间的额外开销也是对数，但是时间的额外开销变为了多项式，即表~\ref{tbl:complexity}所示的时间复杂度$\bigO(T^{1+\epsilon})$，其中$\epsilon > 0$，高于最优检查点方案。
 
-\section{后向自动微分的时间与空间的权衡}\label{sec:timespace}
 Treeverse算法和Bennett算法分别是源代码后向自动微分（一种通过源代码变换实现的反向传播技术）和可逆计算中权衡时间与空间的核心的算法。为了更好的理解这些算法以方便更好的对物理模拟过程微分，我们用鹅卵石游戏模型来进行说明。
 
 %其实还有一种更加简单的做法是，那就是仅记录程序的初始状态，当需要获取第$k$个计算状态$s_k$，程序从初始状态$s_0$开始进行$k$步运算。这个算法虽然没有额外的空间开销，但是需要$\bigO(T^2)$的运行时间。

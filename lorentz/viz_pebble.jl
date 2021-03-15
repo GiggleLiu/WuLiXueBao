@@ -8,7 +8,7 @@ function showtape(n::Int, checkpoints; removed=Int[], new=Int[], y=0.5, ngrad=0,
     unit = 1/(n+1)
     BG = "#AAAAAA"
     NEW = "#000000"
-    EXIST = "#3D3D3D"
+    EXIST = "#555555"
     r = 0.25
     a = 0.4
     grid = nodestyle(:square, fill(BG), stroke("transparent"), r=a*unit)
@@ -153,13 +153,13 @@ function plot_all(; fname=nothing)
     y1 = 0.115
     img = Compose.compose(context(),
         (context(), line([(x0, y0), (x0+0.15, y0)]), arrow(), stroke("black")),
-        (context(), text(x0+0.03, y0-0.01, "格子 × 20"), fontsize(5)),
+        (context(), text(x0+0.03, y0-0.01, "格子 × 20"), font("ubuntu"), fontsize(5)),
         (context(), line([(x0, y0), (x0, y0+0.15)]), arrow(), stroke("black")),
-        (context(), text(x0-0.025, y0+0.075, "步骤 × 46", hcenter, vcenter, Rotation(-π/2,x0-0.025, y0+0.075)), fontsize(5)),
+        (context(), text(x0-0.025, y0+0.075, "步骤 × 46", hcenter, vcenter, Rotation(-π/2,x0-0.025, y0+0.075)), font("ubuntu"), fontsize(5)),
         (context(), line([(x1, y1), (x1+0.15, y1)]), arrow(), stroke("black")),
-        (context(), text(x1+0.03, y1-0.01, "格子 × 16"), fontsize(5)),
+        (context(), text(x1+0.03, y1-0.01, "格子 × 16"), font("ubuntu"), fontsize(5)),
         (context(), line([(x1, y1), (x1, y1+0.15)]), arrow(), stroke("black")),
-        (context(), text(x1-0.025, y1+0.075, "步骤 × 41", hcenter, vcenter, Rotation(-π/2,x1-0.025, y1+0.075)), fontsize(5)),
+        (context(), text(x1-0.025, y1+0.075, "步骤 × 41", hcenter, vcenter, Rotation(-π/2,x1-0.025, y1+0.075)), font("ubuntu"), fontsize(5)),
         (context(), text(0.05, 0.07, "(a)"), fontsize(5)),
         (context(), text(0.55, 0.07, "(b)"), fontsize(5)),
         (context(0.1, y0+0.02, 0.8*NX1/NN, 0.8*NY1/NN), img1),
