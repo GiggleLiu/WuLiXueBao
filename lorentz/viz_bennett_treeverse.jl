@@ -7,7 +7,7 @@ function bennett_finger_printing(N::Int, k)
     x0 = P3(1.0, 0.0, 0.0)
     logger = BennettLog()
     #NiLang.AD.gradient(bennett_loss, (0.0, lorentz_step!, zero(P3{Float64}), x0); iloss=1, Δt=3e-3, k=k, nsteps=N, logger=logger)[4]
-    bennett_loss(0.0, lorentz_step!, zero(P3{Float64}), x0; Δt=3e-3, k=k, nsteps=N, logger=logger)
+    bennett_loss(0.0, lorentz_step!, zero(P3{Float64}), x0; Δt=3e-3, k=k, N=N, logger=logger)
     fcalls = logger.fcalls[1:length(logger.fcalls)*4÷7]
 
     eb1 = bondstyle(:line, linewidth(LW), stroke("black"))
@@ -43,13 +43,13 @@ function treeverse_finger_printing(N::Int, δ)
     eb2 = bondstyle(:line, linewidth(LW), stroke("red"))
     img = canvas() do
         for act in filter(act->act.action == :call, log.actions)
-            eb1 >> ((act.step-1, act.depth), (act.step, act.depth))
+            eb1 >> ((act.step, act.depth), (act.step+1, act.depth))
         end
         for act in filter(act->act.action == :store, log.actions)
             nb >> (act.step, act.depth)
         end
         for act in filter(act->act.action == :grad, log.actions)
-            eb2 >> ((Float64(act.step-1), act.depth+0.3), (Float64(act.step), act.depth+0.3))
+            eb2 >> ((Float64(act.step), act.depth+0.3), (Float64(act.step+1), act.depth+0.3))
         end
     end
     τ = binomial_fit(N, δ)

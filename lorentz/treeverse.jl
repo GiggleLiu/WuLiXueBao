@@ -29,7 +29,6 @@ end
 function mid(δ, τ, σ, ϕ, d)
     κ = ceil(Int, (δ*σ + τ*ϕ)/(τ+δ))
     if κ >= ϕ && d > 0
-        @show "@@@"
         κ = max(σ+1, ϕ-1)
     end
     return κ
@@ -54,7 +53,7 @@ function treeverse!(f, s::T, state::Dict{Int,T}, g, δ, τ, β, σ, ϕ, logger) 
         logger.peak_mem[] = max(logger.peak_mem[], length(state))
         for j=β:σ-1
             s = f(s)
-            push!(logger, :call, τ, δ, j+1)
+            push!(logger, :call, τ, δ, j)
         end
     end
 
@@ -72,8 +71,8 @@ function treeverse!(f, s::T, state::Dict{Int,T}, g, δ, τ, β, σ, ϕ, logger) 
     q = s
     s = f(s)
     g = grad_func(f, s, q, g)
-    push!(logger, :call, τ, δ, ϕ)
-    push!(logger, :grad, τ, δ, ϕ)
+    push!(logger, :call, τ, δ, σ)
+    push!(logger, :grad, τ, δ, σ)
     if σ>β
         # retrieve s
         s = pop!(state, β)
@@ -97,6 +96,7 @@ function grad_func(::typeof(step_fun), y, x, g)
 end
 
 using Test, ForwardDiff
+#=
 @testset "treeverse gradient" begin
     x0 = P3(1.0, 0.0, 0.0)
 
@@ -107,3 +107,4 @@ using Test, ForwardDiff
         @test g_fd ≈ [g_tv[2].x, g_tv[2].y, g_tv[2].z]
     end
 end
+=#

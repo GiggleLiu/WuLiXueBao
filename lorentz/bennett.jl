@@ -11,6 +11,7 @@ end
 end
 
 using Test, ForwardDiff
+#=
 @testset "bennett gradient" begin
     x0 = P3(1.0, 0.0, 0.0)
     state = Dict{Int,Tuple{Float64,P3{Float64}}}()
@@ -23,6 +24,7 @@ using Test, ForwardDiff
         @test length(logger.fcalls) > 0
     end
 end
+=#
 
 using Compose, Viznet
 function bennett_finger_printing(N::Int, k)
