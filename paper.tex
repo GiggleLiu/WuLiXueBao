@@ -284,7 +284,7 @@ Treeverse算法和Bennett算法分别是源代码后向自动微分（一种通�
 \end{tcolorbox}
 这里一个鹅卵石代表了一个单位的内存，而放置和取回鹅卵石的过程分别代表了计算和反计算，因此均需要一个步骤数，即可逆计算的一个单位的运算时间。可逆计算在释放内存时，要求其前置状态存在以保证反计算的可行，在这里对应回收规则中要求前一个格点中存在鹅卵石。
 游戏目标是从自己的堆中取尽可能最少的鹅卵石，或是使用尽可能少的步骤数触发游戏结束。
-鹅卵石游戏最省步骤数的玩法，也是最消耗空间的玩法是用$n$个鹅卵石依次铺至终点格子$n$，此时时间复杂度和空间复杂度均为$\bigO(T)$，此处$T$为格子数。最少的鹅卵石数目的玩法则需要用到可逆计算框架下时间和空间最优交换方案Bennett算法。
+可逆计算版本的鹅卵石游戏最省步骤数的玩法，也是最消耗空间的玩法是用$n$个鹅卵石依次铺至终点格子$n$，此时时间复杂度和空间复杂度均为$\bigO(T)$，此处$T$为格子数。最少的鹅卵石数目的玩法则需要用到可逆计算框架下时间和空间最优交换方案Bennett算法。
 
 \begin{algorithm}
     \setstretch{1.35}
@@ -324,7 +324,7 @@ Treeverse算法和Bennett算法分别是源代码后向自动微分（一种通�
 \end{figure}
 
 
-我们稍微修改可以得到检查点版本的规则，它为用户增加了一支画笔用于涂鸦格点，其规则描述为
+我们稍微修改可以得到检查点版本的规则，它为用户增加了一支画笔用于涂鸦格点，改变后的规则描述为
 \begin{tcolorbox}[width=\textwidth, title=鹅卵石游戏-检查点版本]
     \setstretch{1.5}
     \textit{放置规则}：如果第$i$个格子上有鹅卵石，则可以从自己堆中取一个鹅卵石放置于第$i+1$个格子中，\\
@@ -332,8 +332,6 @@ Treeverse算法和Bennett算法分别是源代码后向自动微分（一种通�
     \textit{涂鸦规则}：当第$i$个格子有鹅卵石，且第$i+1$个格子被涂鸦或$i=n$，可以涂鸦第$i$个格子，涂鸦不记入步骤数，\\
     \textit{结束条件}：涂鸦完所有的格点。
 \end{tcolorbox}
-
-检查点方案中，涂鸦过程代表了梯度反向传播的过程，它要求按照以与程序正常运行方向相反的顺序访问计算状态。
 
 \begin{figure}
     \centerline{\includegraphics[width=0.88\columnwidth,trim={0 0cm 0 0cm},clip]{bennett_treeverse_pebbles.pdf}}
@@ -345,44 +343,51 @@ Treeverse算法和Bennett算法分别是源代码后向自动微分（一种通�
     \SetAlgoLined
     \DontPrintSemicolon
     \SetKwProg{Fn}{function}{}{end}
-    \KwInput{初始状态$s=s_0$, 状态缓存集合$S=\{\}$，需回传的梯度$g_n\equiv \frac{\partial \mathcal{L}}{\partial s_n}$， 允许缓存的状态数$\delta$, 扫描次数$\tau$, 分块起点$\beta=0$，分开终点$\phi=n$，以及把分块分割为两部分的分割点$\sigma=0$}
-    \KwResult{回传的梯度$g_0 \equiv \frac{\partial \mathcal{L}}{\partial s_0}$}
-    \Fn{\rm treeverse($s$, $S$, $g$, $\delta$, $\tau$, $\beta$, $\sigma$, $\phi$)}{
+    \KwInput{初始状态$s=s_0$, 状态缓存集合$S=\{\}$，需回传的梯度$\overline{s_n}\equiv \frac{\partial \mathcal{L}}{\partial s_n}$， 允许缓存的状态数$\delta$, 扫描次数$\tau$, 分块起点$\beta=0$，分开终点$\phi=n$，以及把分块分割为两部分的分割点$\sigma=0$}
+    \KwResult{回传的梯度$\overline{s_0} \equiv \frac{\partial \mathcal{L}}{\partial s_0}$}
+    \Fn{\rm treeverse($s$, $S$, $\overline{s_\phi}$, $\delta$, $\tau$, $\beta$, $\sigma$, $\phi$)}{
         \If{\rm $\sigma > \beta$}{
             $\delta = \delta - 1$\;
-            $S[\beta] = s$   \Comment*[r]{缓存状态 $s_\beta$至状态字典$S$}
+            $S[\beta] = s_\beta$   \Comment*[r]{缓存状态 $s_\beta$至状态集合$S$}
             \For{$j=\beta,\beta+1, ..., \sigma-1$}{
-                $s = f_j(s)$
+                $s_{j+1} = f_j(s_j)$ \Comment*[r]{计算$s_\sigma$}
             }
         }
 
-         \#~以$\kappa$为最优分割点\;
-        \While{\rm $\tau>0$ {\bf and} $\kappa=\lceil\delta\sigma + \tau\phi/(\tau+\delta)\rceil < \phi$}{
-            $g$ = treeverse($s$, $S$, $g$, $\delta$, $\tau$, $\sigma$, $\kappa$, $\phi$)\;
+         \#~以$\kappa$为最优分割点（二项分布），递归调用Treeverse算法\;
+        \While{\rm $\tau>0$ {\bf and} $\kappa=\lceil(\delta\sigma + \tau\phi)/(\tau+\delta)\rceil < \phi$}{
+            $\overline{s_{\kappa}}$ = treeverse($s_\sigma$, $S$, $\overline{s_\phi}$, $\delta$, $\tau$, $\sigma$, $\kappa$, $\phi$)\;
             $\tau = \tau-1$\;
             $\phi = \kappa$
         }
 
         \If{\rm $\phi-\sigma \neq 1$}{
-            \texttt{error("treeverse fails!")}
+            \texttt{error("treeverse fails!")} \Comment*[r]{由于总步长$n\neq \eta(\tau+\delta, \delta)$，实际实现应处理该异常}
         }
-        $g = g_\sigma(s, g)$\;
+        $\overline{s_\sigma} = \overline{s_{\sigma+1}}\frac{\partial s_{\sigma+1}}{\partial s_\sigma}$\Comment*[r]{利用已有的$s_\sigma$和$\overline{s_\phi}$回传导数}
         \If{\rm $\sigma>\beta$}{
-            remove($S[\beta]$) \Comment*[r]{从状态字典S移除状态$s_\beta$}
+            remove($S[\beta]$) \Comment*[r]{从缓存的状态集合中移除$s_\beta$}
         }
-        {\bf return} $g$
+        {\bf return} $\overline{s_\sigma}$
     }
     \caption{Treeverse算法}\label{alg:treeverse}
 \end{algorithm}
 
-有了鹅卵石游戏的图像，我们看下检查点方案的算法的梗概如图\ref{fig:tradeoff} (a)所示，算法把计算过程分割成$d$个区块，并记录每个区块的开始状态，每个区块的大小由函数$\eta(\tau, \delta)$决定，其中$\delta=1\ldots d$为从末尾开始数的区块的指标，$\tau = 1\ldots t$是一个超参数并被初始化为$t$。
-最后的区块最小，因此可以用上述$\bigO(T^2)$的算法来获取中间状态，回溯完最后一个区块后，程序释放最后一个区块开始处被缓存的状态。
-于是在接下来计算倒数第二个区块的过程中，我们可以在这个计算过程中多缓存一个状态而不增加最大内存开销。类似的，倒数第$\delta$个分块可以使用的额外状态缓存数为$\delta-1$。
-对每个分开递归的调用这个算法$t$次，每次将$\tau\leftarrow \tau-1$，最后得到的分块的大小为$1$。整个算法的时间和空间开销的关系是
+检查点版本的鹅卵石游戏中，涂鸦过程代表了梯度反向传播的过程，因此它要求按照以与程序正常运行方向相反的顺序访问计算状态。它最节省步骤数的解法和可逆计算版本一样，即计算过程中不取下任何鹅卵石。而用最少鹅卵石的解法则是每当我们需要涂鸦一个格子$i$，我们总是从初始鹅卵石$s_0$开始扫描（依次放置一个鹅卵石并取下前一个鹅卵石）$i$步至格子$i$，因此只需要2个鹅卵石即可涂鸦全部格子，步骤数为$\frac{n(n-1)}{2}$。
+如算法~\ref{alg:treeverse} （图\ref{fig:tradeoff} (a)）所示，
+完成第一遍从$s_0$到$s_{n}$的扫描后会在棋盘上留下$\delta$个鹅卵石（不包括初始鹅卵石），把格点分割成$\delta$个区块。我们把这些没有被取下的鹅卵石称为检查点，我们总可以从任意一个检查点出发通过放置-取回鹅卵石的操作扫描后方的格子。
+每个区块的大小被证明有一个最优的取值，即大小为二项分布函数$\eta(\tau, d)$，其中$d=1,2,\ldots, \delta$为从末尾开始数的区块的指标，而$\tau$的取值满足$\eta(\tau, \delta) = n$。
+由于最后的$n$号格子可以直接被涂色，拥有状态$s_{n-1}$后，$n-1$号格子满足涂鸦规则，因此我们可以在第一遍扫描时给它涂上颜色。
+为了继续涂鸦$n-2$号格点，我们从离$n-2$号格点最近的检查点出发扫描至该点，依次类推直至达到最后一个检查点处。
+由于最后一个区块尺寸最小，我们并不担心这样的扫描会使得步骤数增加太多。
+当我们完成了最后一个区块的涂鸦，我们便可把格子上用于标记最后一个区块起点的鹅卵石取下重复利用。
+为了涂鸦倒数第二个区块，我们先是扫描整个区间，并把这个区间用回收的鹅卵石依据二项分布$\eta(\tau-1, d=2,1)$分割为两个子区间。
+随后依然是用同样的方式计算最后一个区间并递归的分割前一个子区间直至区块大小为1而无法继续分割，同时也意味着进行了$\tau$次递归。
+整个算法的时间和空间开销的关系是
 \begin{align}
-    T_c = tT, S_c = dS,
+    T_c \approx \tau T, S_c = (\delta+1)S,
 \end{align}
-其中，$T = \eta(t, d)$是初始计算时间。选择适当的$t$或者$d$，在时间和空间维度上的额外复杂度可以都是$\log(T)$。
+其中，$T = \eta(\tau, \delta)$是初始计算时间。选择适当的$t$或者$d$，在时间和空间维度上的额外复杂度可以都是$\log(T)$。图~\ref{fig:pebbles} (a) 展示了如何只用4个鹅卵石，步骤数46涂鸦完所有20个格子。
 
 \begin{figure}[h]
 \centering
@@ -395,9 +400,10 @@ Treeverse算法和Bennett算法分别是源代码后向自动微分（一种通�
     \caption{(a) Treeverse算法 ($t=5$, $d=3$) 和 (b) Bennett算法 ($k=4$, $n=3$) 中，函数的执行过程，其中横向是鹅卵石游戏的格子，纵向随着进入Treeverse函数或者Bennett函数的次数向下延展。}\label{fig:tradeoff}
 \end{figure}
 
-
-检查点和可逆编程的都可以做到和原程序一样的时间复杂度，但是此时都有$\bigO(TS)$的空间复杂度。只有检查点方案才能做到没有额外的空间开销，但是需要有$\bigO(T^2)$，而可逆计算至少为$\bigO(\log(\frac{T}{S}))$的空间复杂度，对应时间复杂度$\bigO(T(\frac{T}{S})^{0.585})$。
-可逆计算的优点是可以很方便的利用可逆性。当我们固定时间，两种方案的空间消耗关系如图\ref{fig:timespace}(a)和(b)所示。当时间的额外开销较小，两者的差异并不明显，反之则可以有接近一个数量级的差别。
+图~\ref{fig:timespace} 展示了在固定额外时间开销的情况下，Bennett算法和Treeverse算法得到的最优的空间开销。
+由于可逆性的限制，可逆计算整体上需要更多的空间开销，尤其是当步骤数更多，或是允许的时间的额外开销更大的时候。
+但可逆计算也有优点，其一是可以利用可逆性节省内存，比如稀疏矩阵的运算中，大多数运算都是可逆的基础操作。同时由于没有全局堆栈以及对程序自动设置检查点的问题，程序设计上也更加自由，比如在GPU编程的设备函数中是不允许访问全局堆栈的。
+基于鹅卵石模型的讨论对于通用的程序显然是过于理想化的，但这样理想化的描述恰巧非常合适用于常微分方程微分的描述。
 
 \begin{table}\centering
     \begin{tabularx}{0.7\textwidth}{Xcc}\toprule
