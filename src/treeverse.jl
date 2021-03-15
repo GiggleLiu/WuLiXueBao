@@ -1,7 +1,3 @@
-using NiLang.AD: GVar
-include("julia.jl")
-include("reversible_programming.jl")
-
 struct TreeverseAction
     action::Symbol
     τ::Int
@@ -43,6 +39,7 @@ function treeverse!(f, s::T, g; δ, N, τ=binomial_fit(N,δ)) where T
     g = treeverse!(f, s, state, g, δ, τ, 0, 0, N, logger)
     return g, logger
 end
+
 function treeverse!(f, s::T, state::Dict{Int,T}, g, δ, τ, β, σ, ϕ, logger) where T
     logger.depth[] += 1
     if σ > β
@@ -70,7 +67,7 @@ function treeverse!(f, s::T, state::Dict{Int,T}, g, δ, τ, β, σ, ϕ, logger) 
     end
     q = s
     s = f(s)
-    g = grad_func(f, s, q, g)
+    g = Lorentz.grad_func(f, s, q, g)
     push!(logger, :call, τ, δ, σ)
     push!(logger, :grad, τ, δ, σ)
     if σ>β
@@ -80,31 +77,3 @@ function treeverse!(f, s::T, state::Dict{Int,T}, g, δ, τ, β, σ, ϕ, logger) 
     end
     return g
 end
-
-@i function i_step_fun(state2, state)
-    rk4_step!((@const lorentz!), (state2 |> tget(2)), (state |> tget(2)), (); Δt=3e-3, t=state[1])
-    (state2 |> tget(1)) += (state |> tget(1)) + 3e-3
-end
-
-function step_fun(x)
-    i_step_fun((0.0, zero(x[2])), x)[1]
-end
-
-function grad_func(::typeof(step_fun), y, x, g)
-    _, gs = (~i_step_fun)(GVar(y, g), GVar(x))
-    NiLang.AD.grad(gs)
-end
-
-using Test, ForwardDiff
-#=
-@testset "treeverse gradient" begin
-    x0 = P3(1.0, 0.0, 0.0)
-
-    for N in [20, 120, 126]
-        g_fd = ForwardDiff.gradient(x->rk4(lorentz, P3(x...), nothing; t0=0.0, Δt=3e-3, Nt=N)[end].x, [x0.x, x0.y, x0.z])
-        g = (0.0, P3(1.0, 0.0, 0.0))
-        g_tv, log = treeverse!(step_fun, (0.0, x0), g; δ=4, N=N)
-        @test g_fd ≈ [g_tv[2].x, g_tv[2].y, g_tv[2].z]
-    end
-end
-=#

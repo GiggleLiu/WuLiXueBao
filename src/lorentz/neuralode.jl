@@ -1,12 +1,3 @@
-using ForwardDiff
-using DelimitedFiles
-using ForwardDiff: Dual
-using NiLang.AD: GVar
-using LinearAlgebra: norm
-
-include("julia.jl")
-include("reversible_programming.jl")
-
 struct Glued{T<:Tuple}
     data::T
 end
@@ -29,7 +20,6 @@ end
     Glued(a .* b.data)
 end
 
-using Test
 function aug_dynamics(t, z::Glued, θ)
     x = z.data[1]
     y = lorentz(t, x, θ)
@@ -37,8 +27,6 @@ function aug_dynamics(t, z::Glued, θ)
     _, _, r, _ = (~lorentz!)(P3(GVar(y.x, a.x), GVar(y.y, a.y), GVar(y.z, a.z)), t, GVar(x), nothing)
     Glued(y, P3(-r.x.g, -r.y.g, -r.z.g))
 end
-
-using Statistics
 
 function error(Nt::Int; nrepeat=100)
     res = map(1:nrepeat) do i
@@ -53,12 +41,6 @@ function error(Nt::Int; nrepeat=100)
         norm(g_fd .- [g_neural_ode.x, g_neural_ode.y, g_neural_ode.z])/norm(g_fd)
     end
     median(res)
-end
-
-function dumperrors()
-    xs = 1:1000
-    errors = error.(xs; nrepeat=10)
-    writedlm("data/errors.dat", errors)
 end
 
 function checkpointed_neuralode(; checkpoint_step=200)
@@ -90,12 +72,19 @@ function checkpointed_neuralode(; checkpoint_step=200)
     z.data[2]
 end
 
-function checkpoint_errors()
+function run_checkpoint_errors(; output_file=joinpath(pwd(), "neuralode_checkpoint.dat"))
     nsteps = [1,20,50,100,150,200,250,300, 350, 400, 450, 500]
     res = map(nsteps) do n
         g1 = checkpointed_neuralode(checkpoint_step=n)
         g_fd = ForwardDiff.gradient(x->rk4(lorentz, P3(x...), nothing; t0=0.0, Δt=3e-3, Nt=10000)[end].x, [1.0, 0.0, 0.0])
         norm(g_fd .- [g1.x, g1.y, g1.z])/norm(g_fd)
     end
-    writedlm("data/neuralode_checkpoint.dat", hcat(nsteps, res))
+    writedlm(output_file, hcat(nsteps, res))
 end
+
+function dumperrors(; output_file=joinpath(pwd(), "errors.dat"))
+    xs = 1:1000
+    errors = error.(xs; nrepeat=10)
+    writedlm(output_file, errors)
+end
+

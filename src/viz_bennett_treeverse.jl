@@ -1,13 +1,8 @@
-include("bennett.jl")
-include("treeverse.jl")
-
-using Compose, Viznet
-LW = 0.3mm
 function bennett_finger_printing(N::Int, k)
-    x0 = P3(1.0, 0.0, 0.0)
+    LW = 0.3mm
+    x0 = 1.0
     logger = BennettLog()
-    #NiLang.AD.gradient(bennett_loss, (0.0, lorentz_step!, zero(P3{Float64}), x0); iloss=1, Δt=3e-3, k=k, nsteps=N, logger=logger)[4]
-    bennett_loss(0.0, lorentz_step!, zero(P3{Float64}), x0; Δt=3e-3, k=k, N=N, logger=logger)
+    bennett_loss(0.0, lorentz_step!, 0.0, x0; Δt=3e-3, k=k, N=N, logger=logger)
     fcalls = logger.fcalls[1:length(logger.fcalls)*4÷7]
 
     eb1 = bondstyle(:line, linewidth(LW), stroke("black"))
@@ -31,12 +26,12 @@ function bennett_finger_printing(N::Int, k)
     )
 end
 
-using Compose, Viznet
 function treeverse_finger_printing(N::Int, δ)
-    x0 = P3(1.0, 0.0, 0.0)
-    s0 = (0.0, x0)
-    g = (0.0, P3(1.0, 0.0, 0.0))
-    g_tv, log = treeverse!(step_fun, s0, g; δ=δ, N=N)
+    LW = 0.3mm
+    x0 = 0.0
+    s0 = x0
+    g = 0.0
+    g_tv, log = treeverse!(x->0.0, s0, g; δ=δ, N=N)
 
     nb = nodestyle(:circle; r=1.5*LW)
     eb1 = bondstyle(:line, linewidth(LW))
@@ -63,7 +58,9 @@ function treeverse_finger_printing(N::Int, δ)
     )
 end
 
-function plot_all(; fname=nothing)
+
+export plot_fingerprinting
+function plot_fingerprinting(; fname=nothing)
     Compose.set_default_graphic_size(20cm, 10cm)
     img1 = treeverse_finger_printing(binomial(3+5, 5), 3)
     img2 = bennett_finger_printing(4^3, 4)
@@ -84,5 +81,5 @@ function plot_all(; fname=nothing)
     return img
 end
 
-#plot_all()
-#plot_all(fname=joinpath(dirname(@__DIR__), "bennett_treeverse_fingerprint"))
+#plot_fingerprinting()
+#plot_fingerprinting(fname=joinpath(dirname(@__DIR__), "bennett_treeverse_fingerprint"))

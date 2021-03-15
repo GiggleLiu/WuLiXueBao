@@ -1,5 +1,3 @@
-include("point.jl")
-
 @inline function Base.:(+)(a::P3, b::P3)
     P3(a.x + b.x, a.y + b.y, a.z + b.z)
 end

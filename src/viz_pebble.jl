@@ -1,9 +1,3 @@
-include("bennett.jl")
-include("treeverse.jl")
-
-using Compose, Viznet
-LW = 0.3mm
-
 function showtape(n::Int, checkpoints; removed=Int[], new=Int[], y=0.5, ngrad=0, flag=true, label="")
     unit = 1/(n+1)
     BG = "#AAAAAA"
@@ -75,7 +69,6 @@ function bennett_pebblegame(N::Int, k)
     return img, NY
 end
 
-using Compose, Viznet
 function treeverse_pebblegame(N::Int, δ)
     x0 = P3(1.0, 0.0, 0.0)
     s0 = (0.0, x0)
@@ -139,7 +132,9 @@ function treeverse_pebblegame(N::Int, δ)
     return img, NY
 end
 
-function plot_all(; fname=nothing)
+export plot_pebblegame
+
+function plot_pebblegame(; fname=nothing)
     NX1 = 21
     NX2 = 17
     img1, NY1 = treeverse_pebblegame(NX1-1, 3)
@@ -172,5 +167,5 @@ function plot_all(; fname=nothing)
     return img
 end
 
-#plot_all()
-plot_all(fname=joinpath(dirname(@__DIR__), "bennett_treeverse_pebbles"))
+#plot_pebblegame()
+#plot_pebblegame(fname=joinpath(dirname(@__DIR__), "bennett_treeverse_pebbles"))

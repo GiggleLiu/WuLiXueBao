@@ -1,10 +1,12 @@
-# 物理学报文章-自动微分
+## Run benchmarks
 
-## How to compile
+1. install packages
 
-```bash
-$ lualatex template.tex
+```julia-pkg
+pkg> add NiLang, ForwardDiff, BenchmarkTools
 ```
 
-NOTE: I have added two document class options `fontset=ubuntu,UTF8`.
-Please modify the first line in `template.tex` if these options do not apply for you!
+2. run
+```bash
+$ julia benchmarking.jl
+```

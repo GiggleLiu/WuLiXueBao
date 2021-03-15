@@ -1,7 +1,3 @@
-using NiLang
-
-include("point.jl")
-
 @i @inline function :(+=)(identity)(Y::P3, X::P3)
     Y.x += X.x
     Y.y += X.y
