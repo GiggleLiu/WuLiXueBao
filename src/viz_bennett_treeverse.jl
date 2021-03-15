@@ -1,8 +1,7 @@
 function bennett_finger_printing(N::Int, k)
     LW = 0.3mm
-    x0 = 1.0
     logger = BennettLog()
-    bennett_loss(0.0, lorentz_step!, 0.0, x0; Δt=3e-3, k=k, N=N, logger=logger)
+    bennett(PlusEq(identity), 0.0, 0.0; logger=logger, k=k, N=N)
     fcalls = logger.fcalls[1:length(logger.fcalls)*4÷7]
 
     eb1 = bondstyle(:line, linewidth(LW), stroke("black"))
@@ -31,7 +30,8 @@ function treeverse_finger_printing(N::Int, δ)
     x0 = 0.0
     s0 = x0
     g = 0.0
-    g_tv, log = treeverse!(x->0.0, s0, g; δ=δ, N=N)
+    log = TreeverseLog()
+    g_tv = treeverse(x->0.0, (x,y,z)->0.0, s0, g; δ=δ, N=N, logger=log)
 
     nb = nodestyle(:circle; r=1.5*LW)
     eb1 = bondstyle(:line, linewidth(LW))

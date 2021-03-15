@@ -35,11 +35,8 @@ function showtape(n::Int, checkpoints; removed=Int[], new=Int[], y=0.5, ngrad=0,
 end
 
 function bennett_pebblegame(N::Int, k)
-    x0 = P3(1.0, 0.0, 0.0)
     logger = NiLang.BennettLog()
-    #NiLang.AD.gradient(bennett_loss, (0.0, lorentz_step!, zero(P3{Float64}), x0); iloss=1, Δt=3e-3, k=k, nsteps=N, logger=logger)[4]
-    bennett_loss(0.0, lorentz_step!, zero(P3{Float64}), x0; Δt=3e-3, k=k, N=N, logger=logger)
-    @show logger.peak_mem[]
+    bennett(PlusEq(identity), 0.0, 0.0; logger=logger, k=k, N=N)
     NY = length(logger.fcalls)÷2+1
     X = 1cm*(N+1)
     Y = 1cm*NY
@@ -50,7 +47,6 @@ function bennett_pebblegame(N::Int, k)
         dy = 1/(N+1)
 
         for (i, f) in enumerate(logger.fcalls[1:NY])
-            @show f
             if f[3] isa NiLangCore.Inv
                 k = findfirst(==(f[2]-1), pebbles)
                 deleteat!(pebbles, k)
@@ -70,10 +66,9 @@ function bennett_pebblegame(N::Int, k)
 end
 
 function treeverse_pebblegame(N::Int, δ)
-    x0 = P3(1.0, 0.0, 0.0)
-    s0 = (0.0, x0)
-    g = (0.0, P3(1.0, 0.0, 0.0))
-    g_tv, logger = treeverse!(step_fun, s0, g; δ=δ, N=N)
+    x0 = 0.0
+    logger = TreeverseLog()
+    g_tv = treeverse(x->0.0, (x,y,z)->0.0, 0.0, 0.0; N=N, δ=δ,logger=logger)
     X = 1cm*(N+1)
 
     actions = copy(logger.actions)
@@ -100,7 +95,6 @@ function treeverse_pebblegame(N::Int, δ)
         fstep = 0
         removed = []
         for (i, act) in enumerate(actions)
-            @show act
             pebbles = checkpoints
             new = []
             if act.action == :call

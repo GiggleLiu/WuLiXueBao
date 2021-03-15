@@ -7,7 +7,7 @@ function step_fun(x)
     i_step_fun((0.0, zero(x[2])), x)[1]
 end
 
-function grad_func(::typeof(step_fun), y, x, g)
+function grad_fun(y, x, g)
     _, gs = (~i_step_fun)(GVar(y, g), GVar(x))
     NiLang.AD.grad(gs)
 end
