@@ -6,6 +6,6 @@ using Compose
 end
 
 @testset "vizsualize" begin
-    plot_fingerprinting() isa Compose.Context
-    plot_pebblegame() isa Compose.Context
+    @test plot_fingerprinting() isa Compose.Context
+    @test plot_pebblegame() isa Compose.Context
 end

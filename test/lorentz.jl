@@ -9,7 +9,8 @@ using NiLang
     for N in [20, 120, 126]
         g_fd = ForwardDiff.gradient(x->rk4(lorentz, P3(x...), nothing; t0=0.0, Δt=3e-3, Nt=N)[end].x, [x0.x, x0.y, x0.z])
         g = (0.0, P3(1.0, 0.0, 0.0))
-        g_tv, log = treeverse(Lorentz.step_fun, Lorentz.grad_fun, (0.0, x0), g; δ=4, N=N)
+        log = TreeverseLog()
+        g_tv = treeverse(Lorentz.step_fun, Lorentz.grad_fun, (0.0, x0), g; δ=4, N=N)
         @test g_fd ≈ [g_tv[2].x, g_tv[2].y, g_tv[2].z]
     end
 end
