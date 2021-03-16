@@ -31,7 +31,7 @@ function treeverse_finger_printing(N::Int, δ)
     s0 = x0
     g = 0.0
     log = TreeverseLog()
-    g_tv = treeverse(x->0.0, (x,y,z)->0.0, s0, g; δ=δ, N=N, logger=log)
+    g_tv = treeverse(x->0.0, (x,z)->0.0, s0, g; δ=δ, N=N, logger=log)
 
     nb = nodestyle(:circle; r=1.5*LW)
     eb1 = bondstyle(:line, linewidth(LW))

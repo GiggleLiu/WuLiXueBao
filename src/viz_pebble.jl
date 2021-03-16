@@ -68,7 +68,7 @@ end
 function treeverse_pebblegame(N::Int, δ)
     x0 = 0.0
     logger = TreeverseLog()
-    g_tv = treeverse(x->0.0, (x,y,z)->0.0, 0.0, 0.0; N=N, δ=δ,logger=logger)
+    g_tv = treeverse(x->0.0, (x,z)->0.0, 0.0, 0.0; N=N, δ=δ,logger=logger)
     X = 1cm*(N+1)
 
     actions = copy(logger.actions)
@@ -76,8 +76,6 @@ function treeverse_pebblegame(N::Int, δ)
     while length(actions)>0 && ptr<length(actions)
         if actions[ptr].action == :fetch && actions[ptr+1].action == :store && actions[ptr].step == actions[ptr+1].step
             deleteat!(actions, [ptr, ptr+1])
-        elseif actions[ptr].action == :call && actions[ptr+1].action == :grad
-            deleteat!(actions, ptr)
         else
             ptr += 1
         end

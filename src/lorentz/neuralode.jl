@@ -1,4 +1,3 @@
-
 function aug_dynamics(t, z::Glued, θ)
     x = z.data[1]
     y = lorentz(t, x, θ)
@@ -7,9 +6,10 @@ function aug_dynamics(t, z::Glued, θ)
     Glued(y, P3(-r.x.g, -r.y.g, -r.z.g))
 end
 
-function step_wise_gradient(y, t, x, θ, gy)
-    _, _, r, _ = (~lorentz!)(P3(GVar(y.x, gy.x), GVar(y.y, gy.y), GVar(y.z, gy.z)), t, GVar(x), θ)
-    P3(-r.x.g, -r.y.g, -r.z.g)
+function force_gradient(t, x, θ, gy)
+    a = lorentz(t, x, θ)
+    _, _, r, _ = (~lorentz!)(P3(GVar(a.x, gy.x), GVar(a.y, gy.y), GVar(a.z, gy.z)), t, GVar(x), θ)
+    a, P3(-r.x.g, -r.y.g, -r.z.g)
 end
 
 function error(Nt::Int; nrepeat=100)
@@ -33,7 +33,7 @@ function run_neuralode_checkpoint_errors(; output_file=nothing)
     ts = 0.0:3e-3:30
     res = map(nsteps) do n
         gn = P3(1.0, 0.0, 0.0)
-        g1 = checkpointed_neuralode(RK4(), lorentz, step_wise_gradient, P3(x0...), gn, nothing; ts=ts, checkpoint_step=n)
+        g1 = checkpointed_neuralode(RK4(), lorentz, force_gradient, P3(x0...), gn, nothing; ts=ts, checkpoint_step=n)
         g_fd = ForwardDiff.gradient(x->ODESolve(RK4(), lorentz, P3(x...), nothing; ts=ts).x, x0)
         norm(g_fd .- [g1.x, g1.y, g1.z])/norm(g_fd)
     end
