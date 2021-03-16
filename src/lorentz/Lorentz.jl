@@ -1,6 +1,7 @@
 module Lorentz
 
-using ..TreeverseAndBennett: RK4, ODESolve, Glued, checkpointed_neuralode
+using ..TreeverseAndBennett: RK4, ODESolve, Glued, checkpointed_neuralode, i_ODESolve, i_ODEStep
+using ReversibleSeismic: build_aug_dynamics
 
 using BenchmarkTools
 using DelimitedFiles

@@ -34,40 +34,6 @@ end
     ~@routine
 end
 
-@i function i_ODEStep(solver::RK4, f, y!::T, y::T, θ; Δt, t) where T
-    @routine @invcheckoff begin
-        @zeros T k1 k2 k3 k4 o1 o2 o3 o4 yk1 yk2 yk3
-        f(o1, t, y, θ)
-        k1 += Δt * o1
-        yk1 += y
-        yk1 += k1 / 2
-        t += Δt/2
-        f(o2, t, yk1, θ)
-        k2 += Δt * o2
-        yk2 += y
-        yk2 += k2 / 2
-        f(o3, t, yk2, θ)
-        k3 += Δt * o3
-        yk3 += y
-        yk3 += k3
-        t += Δt/2
-        f(o4, t, yk3, θ)
-        k4 += Δt * o4
-    end
-    y! += y
-    y! += k1 / 6
-    y! += k2 / 3
-    y! += k3 / 3
-    y! += k4 / 6
-    ~@routine
-end
-
-@i function i_ODESolve(solver, f, history, y0::T, θ; ts) where T
-    history[1] += y0
-    @invcheckoff @inbounds for i=1:length(ts)-1
-        i_ODEStep(solver, f, history[i+1], history[i], θ; Δt=ts[i+1]-ts[i], t=ts[i])
-    end
-end
 
 @i function iloss!(out, f, history, y0, θ; ts)
     i_ODESolve(RK4(), (@const f), history, y0, θ; ts=ts)

@@ -7,12 +7,14 @@ using DelimitedFiles, BenchmarkTools
 using ReversibleSeismic
 using ReversibleSeismic: treeverse, treeverse!, TreeverseLog, binomial_fit
 
-export treeverse, bennett, treeverse!, bennett!, Lorentz, TreeverseLog, BennettLog
+export treeverse, bennett, treeverse!, bennett!, Lorentz, TreeverseLog, BennettLog,
+    Glued, RK4, ODESolve, ODEStep, i_ODEStep, i_ODESolve, ODELog,
+    checkpointed_neuralode, Seismic
 
 include("run_benchmarks.jl")
 include("viz_bennett_treeverse.jl")
 include("viz_pebble.jl")
-include("neuralode.jl")
 include("lorentz/Lorentz.jl")
+include("seismic/seismic.jl")
 
 end # module

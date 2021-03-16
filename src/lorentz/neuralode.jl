@@ -1,11 +1,3 @@
-function aug_dynamics(t, z::Glued, θ)
-    x = z.data[1]
-    y = lorentz(t, x, θ)
-    a = z.data[2]
-    _, _, r, _ = (~lorentz!)(P3(GVar(y.x, a.x), GVar(y.y, a.y), GVar(y.z, a.z)), t, GVar(x), nothing)
-    Glued(y, P3(-r.x.g, -r.y.g, -r.z.g))
-end
-
 function force_gradient(t, x, θ, gy)
     a = lorentz(t, x, θ)
     _, _, r, _ = (~lorentz!)(P3(GVar(a.x, gy.x), GVar(a.y, gy.y), GVar(a.z, gy.z)), t, GVar(x), θ)
@@ -21,6 +13,7 @@ function error(Nt::Int; nrepeat=100)
 
         x1 = ODESolve(RK4(), lorentz, x0, nothing; ts=0.0:Δt:Δt*Nt)
         z0 = Glued(x1, P3(1.0, 0.0, 0.0))
+        aug_dynamics = build_aug_dynamics(force_gradient)
         g_neural_ode = ODESolve(RK4(), aug_dynamics, z0, nothing; ts=Δt*Nt:-Δt:0.0).data[2]
         norm(g_fd .- [g_neural_ode.x, g_neural_ode.y, g_neural_ode.z])/norm(g_fd)
     end
