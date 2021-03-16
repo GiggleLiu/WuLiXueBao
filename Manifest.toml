@@ -211,7 +211,7 @@ version = "0.8.1"
 
 [[NiLangCore]]
 deps = ["MatchCore", "TupleTools"]
-git-tree-sha1 = "3f7252ad420f409e7bc42b94eea806fd38f6a6b6"
+path = "/home/leo/.julia/dev/NiLangCore"
 uuid = "575d3204-02a4-11ea-3f62-238caa8bf11e"
 version = "0.8.1"
 

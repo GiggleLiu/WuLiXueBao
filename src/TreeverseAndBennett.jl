@@ -12,6 +12,7 @@ export treeverse, bennett, treeverse!, bennett!, Lorentz, TreeverseLog, BennettL
 include("run_benchmarks.jl")
 include("viz_bennett_treeverse.jl")
 include("viz_pebble.jl")
+include("neuralode.jl")
 include("lorentz/Lorentz.jl")
 
 end # module

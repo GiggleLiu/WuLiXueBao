@@ -1,5 +1,7 @@
 module Lorentz
 
+using ..TreeverseAndBennett: RK4, ODESolve, Glued, checkpointed_neuralode
+
 using BenchmarkTools
 using DelimitedFiles
 using ForwardDiff
@@ -9,7 +11,7 @@ using NiLang.AD: GVar
 using NiLang
 using Statistics
 
-export P3, rk4, lorentz
+export P3, lorentz
 
 include("point.jl")
 include("bennett.jl")
