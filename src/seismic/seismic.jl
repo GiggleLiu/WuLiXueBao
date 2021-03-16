@@ -11,9 +11,10 @@ the reversible loss
 	out -= tu[size(c,1)÷2,size(c,2)÷2+20,end]
 end
 
-@i function i_loss_bennett!(out, step, y, x, param, srci, srcj, srcv, c; kwargs...)
-    bennett((@skip! step), y, x, param, srci, srcj, srcv, c; kwargs...)
-    out -= y.u[size(c,1)÷2,size(c,2)÷2+20]
+@i function i_loss_bennett!(out, step, state, param, srci, srcj, srcv, c; k, logger=NiLang.BennettLog())
+    #bennett((@skip! step), y, x, param, srci, srcj, srcv, c; kwargs...)
+    bennett!((@const step), state, k, 1, (@const param.NSTEP-1), param, srci, srcj, srcv, c; do_uncomputing=false, logger=logger)
+    out -= state[param.NSTEP].u[size(c,1)÷2,size(c,2)÷2+20]
 end
 
 function loss(param, srci, srcj, srcv::AbstractVector{T}, c::AbstractMatrix{T}) where T
@@ -86,13 +87,13 @@ function getgrad(c::AbstractMatrix{T}; nstep::Int, method=:nilang, treeverse_δ=
         gn.u[size(c,1)÷2,size(c,2)÷2+20] -= 1.0
         g_tv_x, g_tv_srcv, g_tv_c = treeverse_solve(s0, (gn, zero(srcv), zero(c));
             param=param, c=c, srci=srci, srcj=srcj,
-            srcv=srcv, δ=50, N=nstep-1, logger=log)
+            srcv=srcv, δ=50, logger=log)
         return g_tv_x.u, g_tv_srcv, g_tv_c
     elseif method == :bennett
         nx, ny = size(c, 1) - 2, size(c, 2) - 2
         x = ReversibleSeismic.SeismicState(Float64, nx, ny)
-        _,_,_,gx,_,_,_,gsrcv,gc = NiLang.AD.gradient(i_loss_bennett!, (0.0, bennett_step!, zero(x), copy(x), param, srci, srcj, srcv, copy(c)); iloss=1, k=bennett_k, N=nstep-1)
-        return gx.u, gsrcv, gc
+        _,_,gx,_,_,_,gsrcv,gc = NiLang.AD.gradient(i_loss_bennett!, (0.0, bennett_step!, Dict(1=>copy(x)), param, srci, srcj, srcv, copy(c)); iloss=1, k=bennett_k)
+        return gx[1].u, gsrcv, gc
     else
         error("")
     end
