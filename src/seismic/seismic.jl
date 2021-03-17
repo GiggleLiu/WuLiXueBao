@@ -1,8 +1,8 @@
 module Seismic
 using NiLang, Plots
-import ReversibleSeismic
-using ReversibleSeismic: i_one_step!, AcousticPropagatorParams, Ricker, i_solve!, solve, treeverse_solve, bennett_step!,
-    SeismicState
+using KernelAbstractions
+using ReversibleSeismic
+using KernelAbstractions.CUDA
 
 """
 the reversible loss
@@ -40,14 +40,14 @@ function generate_useq(c; nstep, method=:julia, bennett_k=50, usecuda=false)
  	    res = i_solve!(param, srci, srcj, srcv, c, tu, tφ, tψ)
 	    return res[end-2]
     elseif method == :bennett
+        x = SeismicState(Float64, nx, ny)
         if usecuda
-            state = Dict(1=>ReversibleSeismic.CuSeismicState(Float64, nx, ny))
-            param = cu(param)
+            x = togpu(x)
+            param = togpu(param)
             c = CuArray(c)
         end
-        x = SeismicState(Float64, nx, ny)
         logger = NiLang.BennettLog()
-        state = Dict(1=>copy(x))
+        state = Dict(1=>x)
         bennett!(bennett_step!, state, bennett_k, 1, nstep-1, param, srci, srcj, srcv, c; do_uncomputing=false, logger=logger)
         println(logger)
         return state[nstep].u
@@ -91,21 +91,29 @@ function getgrad(c::AbstractMatrix{T}; nstep::Int, method=:nilang, treeverse_δ=
         s0 = ReversibleSeismic.SeismicState(Float64, nx, ny)
         gn = ReversibleSeismic.SeismicState(Float64, nx, ny)
         gn.u[size(c,1)÷2,size(c,2)÷2+20] -= 1.0
+        if usecuda
+            c = CuArray(c)
+            s0 = togpu(s0)
+            gn = togpu(gn)
+            param = togpu(param)
+        end
         g_tv_x, g_tv_srcv, g_tv_c = treeverse_solve(s0, x->(gn, zero(srcv), zero(c));
             param=param, c=c, srci=srci, srcj=srcj,
             srcv=srcv, δ=treeverse_δ, logger=logger)
         println(logger)
         return g_tv_x.u, g_tv_srcv, g_tv_c
     elseif method == :bennett
+        s0 = SeismicState(Float64, nx, ny)
         if usecuda
             c = CuArray(c)
-            s0 = ReversibleSeismic.CuSeismicState(Float64, nx, ny)
-        else
-            s0 = SeismicState(Float64, nx, ny)
+            s0 = togpu(s0)
+            param = togpu(param)
         end
         logger = NiLang.BennettLog()
         state = Dict(1=>s0)
+        CUDA.allowscalar(true)
         _,gx,_,_,_,gsrcv,gc = NiLang.AD.gradient(i_loss_bennett!, (0.0, state, param, srci, srcj, srcv, c); iloss=1, k=bennett_k, logger=logger)
+        CUDA.allowscalar(false)
         println(logger)
         return gx[1].u, gsrcv, gc
     else
