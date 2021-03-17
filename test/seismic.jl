@@ -1,7 +1,8 @@
 using TreeverseAndBennett, Test
 
 @testset "demo" begin
-    c = rand(52, 52)
+    n = 52
+    c = rand(n, n)
     f_nilang = Seismic.generate_useq(c, nstep=1000, method=:nilang)
     f_julia = Seismic.generate_useq(c, nstep=1000, method=:julia)
     f_bennett = Seismic.generate_useq(c, nstep=1000, method=:bennett, bennett_k=50)

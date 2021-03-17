@@ -68,7 +68,7 @@ end
 function treeverse_pebblegame(N::Int, δ)
     x0 = 0.0
     logger = TreeverseLog()
-    g_tv = treeverse(x->0.0, (x,z)->0.0, 0.0, 0.0; N=N, δ=δ,logger=logger)
+    g_tv = treeverse(x->0.0, (x,z)->0.0, 0.0; N=N, δ=δ,logger=logger)
     X = 1cm*(N+1)
 
     actions = copy(logger.actions)

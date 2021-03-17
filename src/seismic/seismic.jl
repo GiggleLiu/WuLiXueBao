@@ -1,7 +1,8 @@
 module Seismic
 using NiLang, Plots
 import ReversibleSeismic
-using ReversibleSeismic: i_one_step!, AcousticPropagatorParams, Ricker, i_solve!, solve, treeverse_solve, bennett_step!
+using ReversibleSeismic: i_one_step!, AcousticPropagatorParams, Ricker, i_solve!, solve, treeverse_solve, bennett_step!,
+    SeismicState
 
 """
 the reversible loss
@@ -11,9 +12,8 @@ the reversible loss
 	out -= tu[size(c,1)÷2,size(c,2)÷2+20,end]
 end
 
-@i function i_loss_bennett!(out, step, state, param, srci, srcj, srcv, c; k, logger=NiLang.BennettLog())
-    #bennett((@skip! step), y, x, param, srci, srcj, srcv, c; kwargs...)
-    bennett!((@const step), state, k, 1, (@const param.NSTEP-1), param, srci, srcj, srcv, c; do_uncomputing=false, logger=logger)
+@i function i_loss_bennett!(out, state, param, srci, srcj, srcv, c; k, logger=NiLang.BennettLog())
+    bennett!((@const bennett_step!), state, k, 1, (@const param.NSTEP-1), param, srci, srcj, srcv, c; do_uncomputing=false, logger=logger)
     out -= state[param.NSTEP].u[size(c,1)÷2,size(c,2)÷2+20]
 end
 
@@ -22,7 +22,7 @@ function loss(param, srci, srcj, srcv::AbstractVector{T}, c::AbstractMatrix{T}) 
 	-useq[size(tu,1)÷2,size(tu,2)÷2+20,end]
 end
 
-function generate_useq(c; nstep, method=:julia, bennett_k=50)
+function generate_useq(c; nstep, method=:julia, bennett_k=50, usecuda=false)
 	nx, ny = size(c) .- 2
 	param = AcousticPropagatorParams(nx=nx, ny=ny,
 	    Rcoef=0.2, dx=20.0, dy=20.0, dt=0.05, nstep=nstep)
@@ -40,10 +40,16 @@ function generate_useq(c; nstep, method=:julia, bennett_k=50)
  	    res = i_solve!(param, srci, srcj, srcv, c, tu, tφ, tψ)
 	    return res[end-2]
     elseif method == :bennett
-        x = ReversibleSeismic.SeismicState(Float64, nx, ny)
+        if usecuda
+            state = Dict(1=>ReversibleSeismic.CuSeismicState(Float64, nx, ny))
+            param = cu(param)
+            c = CuArray(c)
+        end
+        x = SeismicState(Float64, nx, ny)
         logger = NiLang.BennettLog()
         state = Dict(1=>copy(x))
-        bennett!(bennett_step!, state, bennett_k, 1, nstep-1, param, srci, srcj, srcv, copy(c); do_uncomputing=false, logger=logger)
+        bennett!(bennett_step!, state, bennett_k, 1, nstep-1, param, srci, srcj, srcv, c; do_uncomputing=false, logger=logger)
+        println(logger)
         return state[nstep].u
     else
         error("")
@@ -66,33 +72,41 @@ end
 """
 obtain gradients with NiLang.AD
 """
-function getgrad(c::AbstractMatrix{T}; nstep::Int, method=:nilang, treeverse_δ=50, bennett_k=50) where T
+function getgrad(c::AbstractMatrix{T}; nstep::Int, method=:nilang, treeverse_δ=50, bennett_k=50, usecuda=false) where T
      param = AcousticPropagatorParams(nx=size(c,1)-2, ny=size(c,2)-2,
           Rcoef=0.2, dx=20.0, dy=20.0, dt=0.05, nstep=nstep)
     srci = size(c, 1) ÷ 2 - 1
     srcj = size(c, 2) ÷ 2 - 1
     srcv = Ricker(param, 100.0, 500.0)
+    nx, ny = size(c, 1) - 2, size(c, 2) - 2
     c = copy(c)
     if method == :nilang
-       tu = zeros(T, size(c)..., nstep+1)
-       tφ = zeros(T, size(c)..., nstep+1)
-       tψ = zeros(T, size(c)..., nstep+1)
-       res = NiLang.AD.gradient(Val(1), i_loss!, (0.0, param, srci, srcj, srcv, c, tu, tφ, tψ))
-       return res[end-2][:,:,2], res[end-4], res[end-3]
+        tu = zeros(T, size(c)..., nstep+1)
+        tφ = zeros(T, size(c)..., nstep+1)
+        tψ = zeros(T, size(c)..., nstep+1)
+        res = NiLang.AD.gradient(Val(1), i_loss!, (0.0, param, srci, srcj, srcv, c, tu, tφ, tψ))
+        return res[end-2][:,:,2], res[end-4], res[end-3]
     elseif method == :treeverse
-        nx, ny = size(c, 1) - 2, size(c, 2) - 2
-        log = ReversibleSeismic.TreeverseLog()
+        logger = ReversibleSeismic.TreeverseLog()
         s0 = ReversibleSeismic.SeismicState(Float64, nx, ny)
         gn = ReversibleSeismic.SeismicState(Float64, nx, ny)
         gn.u[size(c,1)÷2,size(c,2)÷2+20] -= 1.0
-        g_tv_x, g_tv_srcv, g_tv_c = treeverse_solve(s0, (gn, zero(srcv), zero(c));
+        g_tv_x, g_tv_srcv, g_tv_c = treeverse_solve(s0, x->(gn, zero(srcv), zero(c));
             param=param, c=c, srci=srci, srcj=srcj,
-            srcv=srcv, δ=50, logger=log)
+            srcv=srcv, δ=treeverse_δ, logger=logger)
+        println(logger)
         return g_tv_x.u, g_tv_srcv, g_tv_c
     elseif method == :bennett
-        nx, ny = size(c, 1) - 2, size(c, 2) - 2
-        x = ReversibleSeismic.SeismicState(Float64, nx, ny)
-        _,_,gx,_,_,_,gsrcv,gc = NiLang.AD.gradient(i_loss_bennett!, (0.0, bennett_step!, Dict(1=>copy(x)), param, srci, srcj, srcv, copy(c)); iloss=1, k=bennett_k)
+        if usecuda
+            c = CuArray(c)
+            s0 = ReversibleSeismic.CuSeismicState(Float64, nx, ny)
+        else
+            s0 = SeismicState(Float64, nx, ny)
+        end
+        logger = NiLang.BennettLog()
+        state = Dict(1=>s0)
+        _,gx,_,_,_,gsrcv,gc = NiLang.AD.gradient(i_loss_bennett!, (0.0, state, param, srci, srcj, srcv, c); iloss=1, k=bennett_k, logger=logger)
+        println(logger)
         return gx[1].u, gsrcv, gc
     else
         error("")

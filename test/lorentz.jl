@@ -8,9 +8,9 @@ using NiLang
 
     for N in [20, 120, 126]
         g_fd = ForwardDiff.gradient(x->ODESolve(RK4(), lorentz, P3(x...), nothing; ts=0.0:3e-3:N*3e-3).x, [x0.x, x0.y, x0.z])
-        g = (0.0, P3(1.0, 0.0, 0.0))
+        gn = (0.0, P3(1.0, 0.0, 0.0))
         log = TreeverseLog()
-        g_tv = treeverse(Lorentz.step_fun, Lorentz.grad_fun, (0.0, x0), g; δ=4, N=N)
+        g_tv = treeverse(Lorentz.step_fun, (x,g)->Lorentz.grad_fun(x,g===nothing ? gn : g), (0.0, x0); δ=4, N=N)
         @test g_fd ≈ [g_tv[2].x, g_tv[2].y, g_tv[2].z]
     end
 end
