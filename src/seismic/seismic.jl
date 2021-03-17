@@ -121,11 +121,13 @@ function getgrad(c::AbstractMatrix{T}; nstep::Int, method=:nilang, treeverse_δ=
     end
 end
 
-#=
-using Optim
-function optimize_c(c, nstep)
-    res = optimize(c->(@show i_loss_and_useq(c, nstep=nstep)[1]), (g, c)->(g.=getgrad(c; nstep=nstep)), c, BFGS(), Optim.Options(iterations=5, g_tol=1e-30, f_tol=1e-30))
-    return res.minimizer
+function timing(nx::Int, ny::Int; nstep::Int, δ, usecuda=true)
+    c = rand(nx, ny)
+    #g_nilang = getgrad(c, nstep=1000, method=:nilang)
+    println("treeverse GPU, size = ($nx, $ny), step = $(nstep), δ = $δ")
+    @time getgrad(c; nstep=nstep, method=:treeverse, usecuda=usecuda, treeverse_δ=δ)
+    @time getgrad(c; nstep=nstep, method=:treeverse, usecuda=usecuda, treeverse_δ=δ)
+    #g_bennett = getgrad(c, nstep=1000, method=:bennett)
 end
-=#
+
 end

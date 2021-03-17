@@ -16,4 +16,3 @@ function run_benchmarks(cases; output_file)
     mkpath(dirname(output_file))
     writedlm(output_file, times)
 end
-
