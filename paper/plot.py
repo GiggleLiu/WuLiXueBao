@@ -2,7 +2,6 @@
 import fire
 from plotlib import *
 from viznet import *
-from viznet import parsecircuit as _
 import numpy as np
 from scipy import optimize, special
 import json
@@ -63,5 +62,59 @@ class PLT(object):
 
             plt.tight_layout()
 
+    def fig3(self, tp="pdf"):
+        FONTSIZE = 16
+        LW = 1.3
+        node = NodeBrush("basic", color='none', lw=LW, size=0.2)
+        node2 = NodeBrush("basic", color='none', lw=LW, edgecolor='none', size=0.001)
+        edge = EdgeBrush('->-', lw=LW)
+        edge2 = EdgeBrush('->.', lw=LW)
+        dashed = EdgeBrush('.>.', lw=LW)
+        node >> (2.0, 0.0)
+        plt.rcParams.update({
+            "text.usetex": True,
+            "font.family": "sans-serif",
+            "font.sans-serif": ["Helvetica"],
+            'text.latex.preamble': r'\usepackage{dsfont}'
+            })
+        with DynamicShow((5,3), 'fig3.%s'%tp) as ds:
+            y = 0.0
+            plt.text(-0.5, y+0.5, "(a)", fontsize=18)
+            a = node >> (0.0, y)
+            b = node >> (1.0, y)
+            c = node >> (2.0, y)
+            d = node >> (3.0, y)
+            dashed >> (a, b)
+            e1 = edge >> (b, c)
+            dashed >> (c, d)
+            e1.text(r"ODEStep", "top", fontsize=12)
+            a.text(r"$\vec s_0$", fontsize=FONTSIZE)
+            b.text(r"$\vec s_{i}$", fontsize=FONTSIZE)
+            c.text(r"$\vec s_{i+1}$", fontsize=FONTSIZE)
+            d.text(r"$\mathcal{L}$", fontsize=FONTSIZE)
+            a.text(r"$\mathds{1}$", "top", fontsize=FONTSIZE, text_offset=0.1, color='r')
+            b.text(r"$\frac{\partial \vec{s}_{i}}{\partial \vec s_0}$", "top", fontsize=FONTSIZE, color='r', text_offset=0.1)
+            c.text(r"$\frac{\partial \vec{s}_{i+1}}{\partial \vec s_0} = {\frac{\partial\vec{s}_{i+1}}{\partial \vec s_i}}\frac{\partial\vec{s}_{i}}{\partial \vec s_0}$", "top", fontsize=FONTSIZE, color='r', text_offset=0.1)
+            d.text(r"$\frac{\partial \mathcal{L}}{\partial \vec s_0}$", "top", fontsize=FONTSIZE, color='r', text_offset=0.1)
+
+            y = -1.1
+            plt.text(-0.5, y+0.5, "(b)", fontsize=18)
+            a = node >> (0.0, y)
+            b = node >> (1.0, y)
+            c = node >> (2.0, y)
+            d = node >> (3.0, y)
+            dashed >> (b, a)
+            e1 = edge >> (c, b)
+            dashed >> (d, c)
+            e1.text(r"ODEStep", "top", fontsize=12)
+            a.text(r"$\vec s_0$", fontsize=FONTSIZE)
+            b.text(r"$\vec s_{i}$", fontsize=FONTSIZE)
+            c.text(r"$\vec s_{i+1}$", fontsize=FONTSIZE)
+            d.text(r"$\mathcal{L}$", fontsize=FONTSIZE)
+            a.text(r"$\frac{\partial \mathcal{L}}{\partial \vec s_0}$", "top", fontsize=FONTSIZE, color='r', text_offset=0.1)
+            #b.text(r"$\frac{\partial \mathcal{L}}{\partial \vec s_i}$", "top", fontsize=FONTSIZE, color='r', text_offset=0.1)
+            b.text(r"$ \frac{\partial \mathcal{L}}{\partial \vec s_i} = \frac{\partial \mathcal{L}}{\partial \vec s_{i+1}}{\frac{\partial\vec{s}_{i+1}}{\partial \vec s_i}}$", "top", fontsize=FONTSIZE, color='r', text_offset=0.1)
+            c.text(r"$\frac{\partial \mathcal{L}}{\partial \vec s_{i+1}}$", "top", fontsize=FONTSIZE, color='r', text_offset=0.1)
+            d.text(r"$1$", "top", fontsize=FONTSIZE, text_offset=0.1, color='r')
 
 fire.Fire(PLT())

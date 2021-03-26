@@ -48,7 +48,7 @@
 %\address{3)}{}
 
 \abstract{自动微分是利用计算机自动化求导的技术，最近几十年因为被用于机器学习研究而被很多人了解。
-如今越来越多的物理学者意识到高效，高效的，自动化的求导可以对很多物理问题的求解提供新的思路。
+如今越来越多的物理学者意识到高效的，自动化的求导可以对很多物理问题的求解提供新的思路。
 其中自动微分在物理模拟问题中的应用尤为重要且具有挑战性。
 本文介绍如何将自动微分技术运用到物理模拟的求导中，介绍了共轭态法，前向自动微分，后向自动微分以及可逆计算自动微分的基本概念，
 并横向对比了它们在物理模拟中的优势和劣势。}
@@ -73,30 +73,29 @@
 %\begin{multicols}{2}\sec
 \vskip 0.55\baselineskip
 \section{引~~~~言}
-    自动微分是指自动获取一个目标计算机程序导数的技术。很多人了解它是因为它在机器学习中的成功应用，人们可以用它优化带有千亿参数的神经元网络~\cite{Rosset2019}。
+    自动微分是指自动获取一段计算机程序导数的技术，很多人对它的了解源自它在机器学习中的成功应用，人们可以用它优化带有千亿计参数的神经元网络~\cite{Rosset2019}。
 与很多人印象不同的是，自动微分其实是个很古老的技术。
-Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求导计算机程序的构想，
-而最近十几年，自动微分在科学计算中的应用越来越广泛并拓展了人们可解决问题的范畴。
-%过去人们需要依赖手动推导求解导数，也因此限制了一个算法可处理问题的范围。
-    一个典型的例子是变分蒙特卡洛算法。
-过去，人们会将变分基态假设为Gutzwiller波函数~\cite{Gutzwiller1963}这样具有良好解析性质的函数。
-直到2017年，Carleo等人~\cite{Carleo2017, Deng2017}把机器学习中的一些变分模型限制波尔兹曼机（RBM）带入到了大家的视野。由于RBM的解析性质很好，计算所需的求导过程可以通过解析推导，所以当时人们并没有强烈的利用计算机辅助求导的动机。
-但受此启发，大家意识到不光是RBM这样解析性质好的函数，任何机器学习中的神经元网络也可以被用做波函数的猜测形式~\cite{Cai2018}。
-而且如果可以用流行的机器学习框架，比如脸书公司开发的PyTorch和谷歌公司开发的TesnorFlow来编写生成波函数的代码，人们可以避免手动推导导数的麻烦，从而可以把波函数的表达变得更加自由。
-而现在，随着人们对微分的认知更加深刻，波函数不光可以表达为以张量运算为主体的神经元网络，还可以是几乎任意的计算机程序。
-%一段通用的代码总可以被分解成一些加减乘除这样的基础解析函数,知晓基础函数的自动微分规则，计算机可以通过链式法则用计算机推导出整个程序的导数。
-    除了这个例子，科学家们利用方便的，自动化的计算机辅助求导还解决了很多包括量子模拟~\cite{Luo2019}，张量网络~\cite{Liao2019}，组合优化~\cite{Liu2020}等领域中的问题。
-甚至是一些非解析的蒙特卡洛抽样过程，人们也设计出了一些办法对其自动化的求导~\cite{Zhang2019}。
+Nolan早在他1953年的博士论文中就提出过计算机自动化求导的构想~\cite{Nolan1953}，
+后来针对这一构想又出现了两种不同的实践，分别是1964年由Wengert实现的前向自动微分~\cite{Wengert1964}和1970年Linnainmaa实现的后向自动微分~\cite{Linnainmaa1976}。
+而最近十几年，由于后向自动微分在机器学习中的广泛应用，也带动了相关技术在科学计算中的越来越广泛的应用。
+    %一个典型的例子是变分蒙特卡洛算法。
+%过去，人们会将变分基态假设为Gutzwiller波函数~\cite{Gutzwiller1963}这样具有良好解析性质的函数。
+%直到2017年，Carleo等人~\cite{Carleo2017, Deng2017}把机器学习中的一些变分模型限制波尔兹曼机（RBM）带入到了大家的视野。由于RBM的解析性质很好，计算所需的求导过程可以通过解析推导，所以当时人们并没有强烈的利用计算机辅助求导的动机。
+%但受此启发，大家意识到不光是RBM这样解析性质好的函数，任何机器学习中的神经元网络也可以被用做波函数的猜测形式~\cite{Cai2018}。
+%而且如果可以用流行的机器学习框架，比如脸书公司开发的PyTorch和谷歌公司开发的TesnorFlow来编写生成波函数的代码，人们可以避免手动推导导数的麻烦，从而可以把波函数的表达变得更加自由。
+%而现在，随着人们对微分的认知更加深刻，波函数不光可以表达为以张量运算为主体的神经元网络，还可以是几乎任意的计算机程序。
+科学家们利用方便的，自动化的计算机辅助求导解决了很多重要的物理问题，其中包括变分蒙特卡洛求解多体物理波函数~\cite{Gutzwiller1963,Carleo2017, Deng2017,Cai2018}，变分量子模拟的模拟~\cite{Luo2019}，多种张量网络算法~\cite{Liao2019}，甚至是自旋玻璃基态构型~\cite{Liu2020}等。
+%甚至是一些非解析的蒙特卡洛抽样过程，人们也设计出了一些办法对其自动化的求导~\cite{Zhang2019}。
 
-虽然有这么多成功的例子，但当人们把自动微分技术应用到物理模拟过程，比如电路仿真，海洋学~\cite{Heimbach2005}和地震学~\cite{Symes2007,Zhu2020}等，常见的机器学习库经常无法直接胜任。
-一方面现有的机器学习框架中的自动微分需要存储程序每一步计算的部分状态以便在后向传播过程中取出用于计算局域梯度。
-而另一方面，物理模拟过程经常包含物理量对时间的积分，积分步长很小而步骤数很多，导致记录中间状态对空间的需求巨大。
-为了解决自动微分对空间的需求，人们可以假设在较短时间内积分器可逆来回溯状态，也被称为共轭态法~\cite{Plessix2006,Chen2018}。
-事实上，除了Leap frog积分器在时间反演不变的哈密顿量问题中可以做到严格时间反演对称，大多数问题中的积分器并不能保证可逆性，所以共轭态法往往存在一定的由积分器带来的系统性误差。
-后来，有人把机器学习中的Treeverse算法带入到了物理模拟的状态回溯中，使得自动微分不再有积分器不可逆带来的系统误差。
-同时，Treeverse算法可以在对数时间和空间下做到状态的严格回溯。
-本文提出了第三种节省空间的方案，那就是利用可逆编程的方案利用Bennett算法来进行状态回溯，
-并横向对比了共轭态 (Adjoint-State)方法，前向自动微分以及基于Treeverse算法和可逆计算的后向自动微分在处理物理模拟问题中的优劣。
+本文回顾并探讨自动微分重要应用之一，对物理模拟过程的自动微分。更具体的说是对海洋学~\cite{Heimbach2005}和地震学~\cite{Symes2007,Zhu2020}等问题中最核心的微分方程求解过程的自动微分。
+这些微分方程的常见的求解方法是将问题的空间部分网格化，从而转换为对时间的常微分方程。
+现有的包括Jax, PyTorch在内的面向机器学习的自动微分框架中处理后向自动微分对于处理这类问题是棘手的。
+因为这些框架需要存储程序每一步计算的信息以便在后向传播过程中取出用于回传梯度。
+这对本身内存空间消耗巨大，且计算步骤数很多的物理模拟过程的积分来说并不实际。
+之所以说空间开销巨大，是因为要模拟的足够精细，空间网格必须要非常稠密，而步骤数多是为了让对时间的常微分更加准确而要求积分步长足够小。
+为了解决自动微分对空间的需求，人们可以假设在较短时间内积分器可逆并通过逆向积分来帮助自动微分回溯状态，也被称为共轭态法~\cite{Plessix2006,Chen2018}。
+事实上，除了Leap frog等少数积分器在时间反演不变的哈密顿量问题中可以做到时间反演对称，大多数的积分器并不能保证严格可逆，所以共轭态法往往存在一定的由积分器带来的系统性误差。
+后来，有人把机器学习中的最优检查点算法带入到了物理模拟的状态回溯中~\cite{Symes2007}，仅在对数的额外时间和空间开销下避免了系统误差。而本文作者也发现与此类似还有可逆计算~\cite{}中的Bennett算法也可以用于用较少的空间回溯中间状态。本文将会介绍共轭态方法，前向自动微分以及基于最优检查点算法和可逆计算的后向自动微分在处理物理模拟问题中的应用并对比不同方法的优劣。
 
 %那物理学家们是否只需要奉行“拿来主义”，仅阅读机器学习库的文档，就可以很好的驾驭自动微分呢？
 %并不完全是的，当大家谈论自动微分的时候有“狭义”和“广义”之分，而主流机器学习库仅涵盖了前者。
@@ -113,17 +112,17 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 
 \section{对物理模拟的自动微分方法}\label{sec:forwardbackward}
 
-    物理模拟过程的常见求解方案是将偏微分方程的空间部分离散并作差分处理~\cite{Grote2010}，将其转换为一个对时间的常微分方程方程
+    物理模拟过程的常见求解方案是将偏微分方程的空间部分离散并作差分处理~\cite{Grote2010}，将其转换为对时间的常微分方程
     $$\frac{d s}{d t} = f(s, t, \theta)$$
 其中$s$为状态，$t$为时间，$\theta$为控制参数。假设我们已经拥有一个常微分方程方程求解器来得到末态
 
 \begin{align}
     \begin{split}
     s_n &= \text{ODESolve}(s_0, f, t_0, t_n, \theta)\\
-        &= (s_{i+1} = {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t) ~\text{for $i=1,2, \ldots, n$})
+        &= (s_{i+1} = {\rm ODEStep}(s_{i}, f, t_i, \theta, \Delta t) ~\text{for $i=0,2, \ldots, n-1$})
     \end{split}
 \end{align}
-其中$t_0$和$s_0$分别为初始时间和状态，$t_n=t_0+n\Delta t$和$s_n$为末了时间和状态。这个常微分方程求解器在求解过程中会把时间离散化，作$n$步叠代，每步仅做从时刻$t_i$到时刻$t_{i}+\Delta t$的演化。最后我们还可以定义一个损失函数$\mathcal{L} = {\rm loss}(s_n)$。
+其中$t_0$和$s_0$分别为初始时间和状态，$t_n=t_0+n\Delta t$和$s_n$为末了时间和状态。这个常微分方程求解器在求解过程中会把时间离散化，作$n$步叠代，每步仅做从时刻$t_i$到时刻$t_{i}+\Delta t$的演化。最后我们还会定义一个损失函数$\mathcal{L} = {\rm loss}(s_n)$。
     自动微分的目标则是求解损失量对参数的导数$\frac{\partial \mathcal{L}}{\partial s_0}$, $\frac{\partial \mathcal{L}}{\partial \theta}$, $\frac{\partial \mathcal{L}}{\partial t_0}$和$\frac{\partial \mathcal{L}}{\partial t_n}$。
     %$$s_{i+1} = s_{i} + f(s_i, t, \theta)$$
 
@@ -150,23 +149,26 @@ Nolan曾在他1953年的博士论文中就提出过~\cite{Nolan1953}自动化求
 \subsection{前向自动微分}
     自动微分可以分为两大类，分别是前向传播（Forward propagation）~\cite{Wengert1964}和后向传播（Backward propagation）~\cite{Boltyanski1960}。
     \begin{figure}[t]
-\centering
-\begin{subfigure}[b]{0.32\textwidth}
-    \centering
-    \includegraphics[width=\textwidth, trim={1cm 3cm 0cm 1cm}, clip]{./forwarddiff.pdf}
-    \caption{\small 前向自动微分}
-\end{subfigure}
-\begin{subfigure}[b]{0.32\textwidth}
-    \centering
-    \includegraphics[width=\textwidth, trim={0 3cm 1cm 1cm}, clip]{./backward-forward.pdf}
-    \caption{\small 后向自动微分中的前向计算}
-\end{subfigure}
-\begin{subfigure}[b]{0.32\textwidth}
-    \centering
-    \includegraphics[width=\textwidth, trim={0 3cm 1cm 1cm}, clip]{./backward-backward.pdf}
-    \caption{\small 后向自动微分中的梯度反向传播}
-\end{subfigure}
-        \caption{利用自动微分计算对于计算过程$y = z * \sin(x)$的导数$\overline{x}\equiv \frac{\partial y}{\partial x}$和$\overline{z}\equiv \frac{\partial y}{\partial z}$。其中圆圈代表函数，线代表变量，箭头代表运算方向，$\Sigma$是一个用于缓存中间计算结果的全局堆栈（一种以先进后出的存储结构）而\texttt{push}和\texttt{pop}分别代表了对该堆栈的入栈（存储）和出栈（取出）操作。}\label{fig:autodifftypes} 
+        \centering
+        \includegraphics[width=0.7\columnwidth,trim={0 0cm 0 0},clip]{fig3.pdf}
+
+%\begin{subfigure}[b]{0.32\textwidth}
+%    \centering
+%    \includegraphics[width=\textwidth, trim={1cm 3cm 0cm 1cm}, clip]{./forwarddiff.pdf}
+%    \caption{\small 前向自动微分}
+%\end{subfigure}
+%\begin{subfigure}[b]{0.32\textwidth}
+%    \centering
+%    \includegraphics[width=\textwidth, trim={0 3cm 1cm 1cm}, clip]{./backward-forward.pdf}
+%    \caption{\small 后向自动微分中的前向计算}
+%\end{subfigure}
+%\begin{subfigure}[b]{0.32\textwidth}
+%    \centering
+%    \includegraphics[width=\textwidth, trim={0 3cm 1cm 1cm}, clip]{./backward-backward.pdf}
+%    \caption{\small 后向自动微分中的梯度反向传播}
+%\end{subfigure}
+        \caption{(a) 前向自动微分和 (b) 后向自动微分再常微分方程中的应用，其中圆圈为变量，线条上的箭头梯度传播的方向。}\label{fig:autodifftypes} 
+        %\caption{利用自动微分计算对于计算过程$y = z * \sin(x)$的导数$\overline{x}\equiv \frac{\partial y}{\partial x}$和$\overline{z}\equiv \frac{\partial y}{\partial z}$。其中圆圈代表函数，线代表变量，箭头代表运算方向，$\Sigma$是一个用于缓存中间计算结果的全局堆栈（一种以先进后出的存储结构）而\texttt{push}和\texttt{pop}分别代表了对该堆栈的入栈（存储）和出栈（取出）操作。}\label{fig:autodifftypes} 
 \end{figure}
 
 前向自动微分和数学中的链式法则推导导数的方法极为相似。它通修改程序运算中的变量，使之携带若干无穷小量$\epsilon^i$，并通过这个无穷小量的运算完成对程序的求导。比如当函数$f$作用于一个标量，它的运算规则变为
@@ -470,6 +472,7 @@ Perfectly matched layer (PML)方程是模拟波在介质中运动的一种准确
 \section*{致谢}
 
 感谢王磊老师的讨论。
+感谢彩云天气CTO苑明理老师的讨论。
 
 
 \section*{附录A1}

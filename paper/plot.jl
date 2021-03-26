@@ -126,9 +126,9 @@ canvas() do
 	arrow(x_y, x_mul)
 	arrow(x_mul, x_z)
 	tb >> ((x_x .+ x_sin) ./ 2 .- (0.0, 0.1), "x = pop(Σ)\nx̄ = cos(x)*s̄")
-	tb >> ((x_sin .+ x_mul) ./ 2 .- (-0.12, 0.04), "s = pop(Σ)\ns̄ = z*ȳ")
+	tb >> ((x_sin .+ x_mul) ./ 2 .- (-0.12, 0.04), "z = pop(Σ)\ns̄ = z*ȳ")
 	tb >> ((x_y .+ x_mul) ./ 2 .- (-0.05, 0.06), "y\nȳ=1")
-	tb >> ((x_z .+ x_mul) ./ 2 .- (0.05, 0.07), "z = pop(Σ)\nz̄ = s*ȳ")
+	tb >> ((x_z .+ x_mul) ./ 2 .- (0.05, 0.07), "s = pop(Σ)\nz̄ = s*ȳ")
 end |> savefig("backward-backward")
 
 # ╔═╡ 712fc8b0-74cf-11eb-3454-4fb7f1ef7b1c
