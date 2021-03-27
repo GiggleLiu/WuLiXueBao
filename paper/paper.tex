@@ -147,7 +147,7 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
 
 
 \subsection{前向自动微分}
-    自动微分可以分为两大类，分别是前向传播（Forward propagation）~\cite{Wengert1964}和后向传播（Backward propagation）~\cite{Boltyanski1960}。
+    自动微分顾名思义，是向前（指与程序运行方向相同）传播导数，如图~\ref{fig:autodifftypes} (a) 所示。
     \begin{figure}[t]
         \centering
         \includegraphics[width=0.7\columnwidth,trim={0 0cm 0 0},clip]{fig3.pdf}
@@ -170,8 +170,7 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
         \caption{(a) 前向自动微分和 (b) 后向自动微分再常微分方程中的应用，其中圆圈为变量，线条上的箭头梯度传播的方向。}\label{fig:autodifftypes} 
         %\caption{利用自动微分计算对于计算过程$y = z * \sin(x)$的导数$\overline{x}\equiv \frac{\partial y}{\partial x}$和$\overline{z}\equiv \frac{\partial y}{\partial z}$。其中圆圈代表函数，线代表变量，箭头代表运算方向，$\Sigma$是一个用于缓存中间计算结果的全局堆栈（一种以先进后出的存储结构）而\texttt{push}和\texttt{pop}分别代表了对该堆栈的入栈（存储）和出栈（取出）操作。}\label{fig:autodifftypes} 
 \end{figure}
-
-前向自动微分和数学中的链式法则推导导数的方法极为相似。它通修改程序运算中的变量，使之携带若干无穷小量$\epsilon^i$，并通过这个无穷小量的运算完成对程序的求导。比如当函数$f$作用于一个标量，它的运算规则变为
+前向自动微分的实现可以理解为使需要求导的变量携带若干无穷小量$\epsilon^i$，并通过这个无穷小量的运算完成对程序的求导。比如当函数$f$作用于一个标量，定义新的的运算规则变为
 \begin{align}
     f(x+\sum\limits^k_{i=1} y_i \epsilon^i) = f(x) + \frac{\partial f(x)}{\partial x} \sum\limits^k_{i=1}y_i\epsilon^i
 \end{align}
