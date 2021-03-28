@@ -405,27 +405,26 @@ Treeverse算法和Bennett算法分别是源代码后向自动微分（一种通�
     \SetAlgoLined
     \DontPrintSemicolon
     \SetKwProg{Fn}{function}{}{end}
-    \KwInput{初始状态$s=s_0$, 状态缓存集合$S=\{\}$，需回传的梯度$\overline{s_n}\equiv \frac{\partial \mathcal{L}}{\partial s_n}$， 允许缓存的状态数$\delta$, 扫描次数$\tau$, 分块起点$\beta=0$，分开终点$\phi=n$，以及把分块分割为两部分的分割点$\sigma=0$}
+    \KwInput{状态缓存集合$S=\{0:s_0\}$，需回传的梯度$\overline{s_n}\equiv \frac{\partial \mathcal{L}}{\partial s_n}$， 允许缓存的状态数$\delta$, 扫描次数$\tau$, 分块起点$\beta=0$，分开终点$\phi=n$，以及把分块分割为两部分的分割点$\sigma=0$}
     \KwResult{回传的梯度$\overline{s_0} \equiv \frac{\partial \mathcal{L}}{\partial s_0}$}
-    \Fn{\rm treeverse($s$, $S$, $\overline{s_\phi}$, $\delta$, $\tau$, $\beta$, $\sigma$, $\phi$)}{
+    \Fn{\rm treeverse($S$, $\overline{s_\phi}$, $\delta$, $\tau$, $\beta$, $\sigma$, $\phi$)}{
         \If{\rm $\sigma > \beta$}{
             $\delta = \delta - 1$\;
-            $S[\beta] = s_\beta$   \Comment*[r]{缓存状态 $s_\beta$至状态集合$S$}
+            %$S[\beta] = s_\beta$   \Comment*[r]{缓存状态 $s_\beta$至状态集合$S$}
+            $s = S[\beta]$   \Comment*[r]{加载初始状态 $s_\beta$}
             \For{$j=\beta,\beta+1, ..., \sigma-1$}{
                 $s_{j+1} = f_j(s_j)$ \Comment*[r]{计算$s_\sigma$}
             }
+            $S[\sigma] = s_\sigma$
         }
 
          \#~以$\kappa$为最优分割点（二项分布），递归调用Treeverse算法\;
         \While{\rm $\tau>0$ {\bf and} $\kappa={\rm mid}(\delta, \tau, \sigma, \phi) < \phi$}{
-            $\overline{s_{\kappa}}$ = treeverse($s_\sigma$, $S$, $\overline{s_\phi}$, $\delta$, $\tau$, $\sigma$, $\kappa$, $\phi$)\;
+            $\overline{s_{\kappa}}$ = treeverse($S$, $\overline{s_\phi}$, $\delta$, $\tau$, $\sigma$, $\kappa$, $\phi$)\;
             $\tau = \tau-1$\;
             $\phi = \kappa$
         }
 
-        \If{\rm $\phi-\sigma \neq 1$}{
-            \texttt{error("treeverse fails!")} \Comment*[r]{由于总步长$n\neq \eta(\tau+\delta, \delta)$，实际实现应处理该异常}
-        }
         $\overline{s_\sigma} = \overline{f_\sigma}(\overline{s_{\sigma+1}}, s_\sigma)$\Comment*[r]{利用已有的$s_\sigma$和$\overline{s_\phi}$回传导数}
         \If{\rm $\sigma>\beta$}{
             remove($S[\beta]$) \Comment*[r]{从缓存的状态集合中移除$s_\beta$}
