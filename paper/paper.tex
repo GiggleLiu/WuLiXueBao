@@ -120,8 +120,8 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
 
 \begin{align}
     \begin{split}
-    s_n &= \text{ODESolve}(s_0, f, t_0, t_n, \theta)\\
-        &= (s_{i+1} = {\rm ODEStep}(s_{i}, f, t_i, \theta, \Delta t) ~\text{for $i=0,2, \ldots, n-1$})
+    s_n &= \text{ODESolve}(f, s_0, \theta, t_0, t_n)\\
+        &= (s_{i+1} = {\rm ODEStep}(f, s_{i}, \theta, t_i, \Delta t) ~\text{for $i=0,2, \ldots, n-1$})
     \end{split}
 \end{align}
 其中$s_i$为完成第$i$步积分后的状态。
@@ -138,11 +138,11 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
     \DontPrintSemicolon
     \SetKwProg{Fn}{function}{}{end}
     \KwInput{动力学参数$\theta$，开始时间$t_0$，结束时间$t_n$，末态$s_n$，以及需要回传的导数$\frac{\partial \mathcal{L}}{\partial s_n}$}
-    \KwResult{$\frac{\partial \mathcal{L}}{\partial s_0}$, $\frac{\partial \mathcal{L}}{\partial \theta}$, $\frac{\partial \mathcal{L}}{\partial t_0}$, $\frac{\partial \mathcal{L}}{\partial t_n}$}
+    \KwResult{$\frac{\partial \mathcal{L}}{\partial s_0}$, $\frac{\partial \mathcal{L}}{\partial \theta}$}
         $\frac{\partial \mathcal{L}}{\partial t_n} = \frac{\partial \mathcal{L}}{\partial s_n}^Tf(s_n,t_n,\theta)$ \Comment*[r]{计算损失函数对终了时间的导数}
-        \Fn{\rm aug\_dynamics([$s$, $a$, -, -], $t$, $\theta$) \hspace{14em}$\#$ 定义拓展动力学函数}{$s'=f(s, t, \theta)$ \; \textbf{return} ($s'$, $-a^T\frac{\partial s'}{\partial s}$, $-a^T\frac{\partial s'}{\partial \theta}$, $-a^T\frac{\partial s'}{\partial t}$)}
-        $S_0$ = ($s_n$, $\frac{\partial \mathcal{L}}{\partial s_n}$, $0$, $-\frac{\partial \mathcal{L}}{\partial t_n}$) \Comment*[r]{计算拓展动力学函数的初始状态}
-        ($s_0$, $\frac{\partial \mathcal{L}}{\partial s_0}$, $\frac{\partial \mathcal{L}}{\partial \theta}$, $\frac{\partial \mathcal{L}}{\partial t_0}$) = ODESolve($S_0$, aug\_dynamics, $t_n$, $t_0$, $\theta$) \Comment*[r]{对拓展动力学反向积分}
+        \Fn{\rm aug\_dynamics([$s$, $a$, -], $t$, $\theta$) \hspace{14em}$\#$ 定义拓展动力学函数}{$s'=f(s, t, \theta)$ \; \textbf{return} ($s'$, $-a^T\frac{\partial s'}{\partial s}$, $-a^T\frac{\partial s'}{\partial \theta}$)}
+        $S_0$ = ($s_n$, $\frac{\partial \mathcal{L}}{\partial s_n}$, $0$) \Comment*[r]{计算拓展动力学函数的初始状态}
+        ($s_0$, $\frac{\partial \mathcal{L}}{\partial s_0}$, $\frac{\partial \mathcal{L}}{\partial \theta}$) = ODESolve(aug\_dynamics, $S_0$, $t_n$, $t_0$, $\theta$) \Comment*[r]{对拓展动力学反向积分}
     \caption{共轭态法}\label{alg:adjointstate}
 \end{algorithm}
 
@@ -189,7 +189,7 @@ $$\texttt{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
         \mapsto &\left(\left({\rm ODEStep}\left(s_{i}, t_i, \theta, \Delta t \right), \frac{\partial s_{i+1}}{\partial s_i} \frac{\D s_{i}}{\D s_0}\right)\right., \\
         &\left.\left(\theta, \frac{\partial s_{i+1}}{\partial s_i} \frac{\D s_{i}}{\D \theta} + \frac{\partial s_{i+1}}{\partial \theta}\right)\right)
 \end{align*}
-由于状态$s_i, s_{i+1}$和控制参数$\theta$均可包含多个变量，上述偏微分均解释为雅可比行列式。
+这里为了简洁略去了积分函数和时间等参量。由于状态$s_i, s_{i+1}$和控制参数$\theta$均可包含多个变量，上述偏微分均解释为雅可比行列式。
 真实的程序计算中，仅通过基本运算的代码替换或者算符重载即可实现该变换。
 %因为一些如\texttt{ForwardDiff}这样优秀的前向自动微分库，我们并不需要手动实现这些链式法则以及基础微分规则。
 这里还有一个与计算时间有关的要素，那就是一次对多少个变量求导。如果同时更行整个雅可比行列式，计算空间随着求导变量数目线性增加。
@@ -197,46 +197,65 @@ $$\texttt{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 在实践中，在内存大小有限且需要求导变量较多的情况下，一般是重复运行多次计算过程，一次只处理若干个变量的导数这样分批次求导。无论是哪种情况，求导时间都会随着需求导的变量的数目线性增长，这是限制前向自动微分应用场景的最主要因素。
 
 \subsection{后向自动微分}
-后向自动微分与前向自动微分梯度传播方向相反，它解决了前向自动微分中计算开销随着需要求导的变量数目线性增长的问题。后向自动微分包括前向计算和梯度后向传播两个过程。前向计算过程中，程序进行普通的计算，但是会保存部分中间结果到一个全局存储空间$\Sigma$中，最后计算得到一个标量为损失$\mathcal{L}$。
+后向自动微分与前向自动微分梯度传播方向相反，它解决了前向自动微分中计算开销随着需要求导的变量数目线性增长的问题。后向自动微分包括前向计算和梯度后向传播两个过程。前向计算过程中，程序进行普通的计算，最后计算得到一个标量为损失$\mathcal{L}$。
 梯度回传的过程是计算导数的过程，可表示为更新一个变量的对偶量的过程$\overline{v} = \frac{\partial \mathcal{L}}{\partial v}$。从$\overline{\mathcal L} = 1$出发，
-梯度回传过程中对应的链式法则为
+梯度回传即应用如下链式法则
 %前向计算过程中除了运算本身，还会将部分运算的中间结果通过\texttt{push($\Sigma$, x)}操作压栈将一个变量\texttt{x}其放入一个全局堆栈$\Sigma$中，
 %而后向过程将这些缓存的结果通过\texttt{x = pop($\Sigma$)}操作出栈并利用如下递推公式计算导数
 \begin{align*}
-    \frac{\D \mathcal{L}}{\D x} &= \sum_y\frac{\partial \mathcal{L}}{\partial y}\frac{\partial y}{\partial x}\\
+    \frac{\D \mathcal{L}}{\D x} &= \sum_y\frac{\partial \mathcal{L}}{\partial y}\frac{\partial y}{\partial x}
 \end{align*}
-对于基础函数$y=f(x)$，对应的对偶量的运算规则为
+为了实现该链式法则，人们对于一类基础函数$y=f(x)$定义了对偶量的局域运算规则
 \begin{align*}
     \overline f: \overline x \mapsto \overline x + \overline y\frac{\partial y}{\partial x}
 \end{align*}
 
-其中，$\frac{\partial y}{\partial x}$为局域雅可比矩阵，它不需要被具体的计算，
+其中，$\frac{\partial y}{\partial x}$为局域雅可比矩阵，它的数值不需要具体计算出来，
 而是以函数的形式，连同所需的中间变量一起存放在栈中，并在后向传播中按照后进先出的顺序调用。
-如图~\ref{fig:autodifftypes} (b) 所示，
-在求解常微分方程的自动微分过程中，其前向计算过程（左侧）和反向传播过程（右侧）分别可以形式化的表达为
+所有由这一类基础函数构成的代码便可以利用上述导数回传规则更新对偶量。
+具体到求解常微分方程的自动微分过程中，其反向传播过程如图~\ref{fig:autodifftypes} (b) 所示，可以形式化的表达为
 
 %\begin{minipage}{0.45\textwidth}
-\begin{align*}
-    {\rm ODEStep}^{\rm B} : s_{i} \mapsto
-    \left(\texttt{push}(\Sigma, s_{i});
-    {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t)\right)
-\end{align*}
+%\begin{align*}
+    %{\rm ODEStep}^{\rm B} : s_{i} \mapsto
+    %\left(\texttt{push}(\Sigma, s_{i});
+    %{\rm ODEStep}(s_{i}, t_i, \theta, \Delta t)\right)
+%\end{align*}
 %\end{minipage}
 %\begin{minipage}{0.45\textwidth}
 \begin{align*}
-    \overline{\rm ODEStep}^{\rm B} : (\overline s_{i+1}, \overline\theta) \mapsto \left(s_{i} = \texttt{pop}(\Sigma);
+    \overline{\rm ODEStep}^{\rm B} : (\overline s_{i+1}, \overline\theta, s_i) \mapsto %\left(s_{i} = \texttt{pop}(\Sigma);
     \left(\overline{s_{i+1}}\frac{\partial s_{i+1}}{\partial s_{i}}
-    ,\overline{\theta} + \overline{s_{i+1}}\frac{\partial s_{i+1}}{\partial \theta}\right)\right)
+    ,\overline{\theta} + \overline{s_{i+1}}\frac{\partial s_{i+1}}{\partial \theta}\right)%\right)
 \end{align*}
 %\end{minipage}
+这里也同样略却了积分函数和时间等参量。考虑到该后向传播过程需要知道函数的输入，整个前向计算（左侧）和后向梯度传播（右侧）可表达为
 
-这里前向计算过程中除了运算本身，还会将部分运算的中间结果通过入栈操作\texttt{push($\Sigma$,$s_i$)}将状态$s_i$的值放入一个全局堆栈$\Sigma$中，而后向过程将这些缓存的结果通过出栈操作\texttt{x = pop($\Sigma$)}取出$s_i$的值并利用后向传播规则更新$\overline s_i$和$\overline \theta$。
+\begin{minipage}{0.45\textwidth}
+\begin{align*}
+    &\ldots\\
+    &\texttt{push}(\Sigma, s_i)\\
+    &s_{i+1} = {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t)\\
+    &\ldots
+\end{align*}
+\end{minipage}
+\begin{minipage}{0.45\textwidth}
+\begin{align*}
+    &\ldots\\
+    &s_{i} = \texttt{pop}(\Sigma)\\
+    &(\overline{s_i}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+1}}, \overline{\theta},s_i)
+    &\ldots
+\end{align*}
+\end{minipage}
+
+前向计算过程中除了运算本身，还会将部分运算的中间结果通过入栈操作\texttt{push($\Sigma$,$s_i$)}将状态$s_i$的值放入一个全局堆栈$\Sigma$中，而后向过程将这些缓存的结果通过出栈操作\texttt{x = pop($\Sigma$)}取出$s_i$的值并利用后向传播规则更新$\overline s_i$和$\overline \theta$。
 %导数回传的计算复杂度与需要求导的变量数目无关，因此它在求导$\sim 10^2$以上的输入变量的优化问题中对比前向自动微分拥有优势，这也是为什么所有的主流自动微分框架都采用梯度后向传播的模式。
 %后向自动微分也有缺点，那就是向堆栈中存储数据带来了正比于计算步骤数 ($\bigO(T)$)的额外空间开销以及频繁访问内存带来的性能下降的问题，这是后向自动微分框架设计的复杂性的来源。
 虽然导数回传的计算复杂度与需要求导的变量数目无关，但后向自动微分向堆栈中存储数据带来了正比于计算步骤数 (i.e. $\bigO(T)$)的额外空间开销。
 如何设计算法在保证对计算状态逆序的访问的前提下，减少计算中使用的堆栈$\Sigma$的大小，是我们在章节~\ref{sec:timespace}中要讨论的一个至关重要的问题。
 
 \section{时间与空间的权衡}\label{sec:timespace}
+\subsection{重计算与反计算}
 在反向自动微分中，比起将每一步的计算状态保存到堆栈，有时候我们也可以通过“重计算”的方式来得到一部分中间状态。
 
 \begin{minipage}{0.45\textwidth}
@@ -250,12 +269,15 @@ $$\texttt{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 \begin{minipage}{0.45\textwidth}
 \begin{align*}
     &s_{i+2} = \texttt{pop}(\Sigma)\\
-    &\overline{s_{i+2}} = \overline{s_{i+3}}\frac{\partial s_{i+3}}{\partial s_{i+2}}\\
+    %&\overline{s_{i+2}} = \overline{s_{i+3}}\frac{\partial s_{i+3}}{\partial s_{i+2}}\\
+    &(\overline{s_{i+2}}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+3}}, \overline{\theta}, s_{i+2})\\
     &s_{i} = \texttt{read}(\Sigma, \texttt{i})\\
     &s_{i+1} = {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t)  ~\# ~\text{重计算}\\
-    &\overline{s_{i+1}} = \overline{s_{i+2}}\frac{\partial s_{i+2}}{\partial s_{i+1}}\\
+    %&\overline{s_{i+1}} = \overline{s_{i+2}}\frac{\partial s_{i+2}}{\partial s_{i+1}}\\
+    &(\overline{s_{i+1}}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+2}}, \overline{\theta}, s_{i+1})\\
     &s_{i} = \texttt{pop}(\Sigma)\\
-    &\overline{s_i} = \overline{s_{i+1}}\frac{\partial s_{i+1}}{\partial s_{i}}
+    %&\overline{s_i} = \overline{s_{i+1}}\frac{\partial s_{i+1}}{\partial s_{i}}
+    &(\overline{s_i}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+1}}, \overline{\theta}, s_{i})\\
 \end{align*}
 \end{minipage}
 
@@ -290,8 +312,19 @@ $$\texttt{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 \end{minipage}
 
 这里我们先是从状态$s_i$经过两步计算得到了状态$s_{i+1}$和$s_{i+2}$。由于$s_{i+1}$在接下来的运算中不会被用到，我们可以利用已有信息$s_i$将它反计算为$0$，并将存储空间“归还”给系统。
-最优的可逆计算框架下的时间与空间的权衡一般认为是Bennett算法，其空间的额外开销也是对数，但是时间的额外开销变为了多项式，即表~\ref{tbl:complexity}所示的时间复杂度$\bigO(T^{1+\epsilon})$，其中$\epsilon > 0$，高于最优检查点方案。
-
+有了反过程，仅需要在反过程中插入求导程序即可完成自动微分。
+\begin{align*}
+    &(\overline{s_{i+2}}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+3}}, \overline{\theta}, s_{i+2})\\
+    &s_{i+1} \leftarrow 0\\
+    &s_{i+1} \mathrel{+}= {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t) ~\# ~\text{计算}~ s_{i+1}\\
+    &(\overline{s_{i+1}}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+2}}, \overline{\theta}, s_{i+1})\\
+    &s_{i+2} \mathrel{-}= {\rm ODEStep}(s_{i+1}, t_i, \theta, \Delta t)\\
+    &s_{i+2} \rightarrow 0\\
+    &s_{i+1} \mathrel{-}= {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t)\\
+    &s_{i+1} \rightarrow 0\\
+    &(\overline{s_{i}}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+1}}, \overline{\theta}, s_{i})
+\end{align*}
+在可逆计算的时间和空间的交换规则下，最优的算法是Bennett算法，其空间的额外开销也是对数，但是时间的额外开销变为了多项式，即表~\ref{tbl:complexity}所示的时间复杂度$\bigO(T^{1+\epsilon})$，其中$\epsilon > 0$，高于最优检查点方案的对数复杂度。
 Treeverse算法和Bennett算法分别是源代码后向自动微分（一种通过源代码变换实现的反向传播技术）和可逆计算中权衡时间与空间的核心的算法。为了更好的理解这些算法以方便更好的对物理模拟过程微分，我们用鹅卵石游戏模型来进行说明。
 
 %其实还有一种更加简单的做法是，那就是仅记录程序的初始状态，当需要获取第$k$个计算状态$s_k$，程序从初始状态$s_0$开始进行$k$步运算。这个算法虽然没有额外的空间开销，但是需要$\bigO(T^2)$的运行时间。
@@ -325,11 +358,13 @@ Treeverse算法和Bennett算法分别是源代码后向自动微分（一种通�
             $S[i+1] \leftarrow 0$\;
             $S[i+1] \mathrel{+}= f_i(S[i])$
         }{
-            \For{$j=1,2,...,k$}{
-                bennett($S$, $k$, $i+\frac{j-1}{k}L$, $\frac L k$) \Comment*[r]{forward for k sub-blocks}
+            $l = \lceil \frac L k \rceil$\;
+            $k' = \lceil \frac L l \rceil$\;
+            \For{$j=1,2,...,k'$}{
+                bennett($S$, $k$, $i+(j-1)l$, $\min(\frac L k, L-(j-1)l)$) \Comment*[r]{forward for k' sub-blocks}
             }
-            \For{$j=k-1,k-2,...,1$}{
-                $\sim$bennett($S$, $k$, $i+\frac{j-1}{k}L$, $\frac L k$) \Comment*[r]{backward for k-1 sub-blocks}
+            \For{$j=k'-1,k'-2,...,1$}{
+                $\sim$bennett($S$, $k$, $i+\frac{j-1}{k}L$, $\frac L k$) \Comment*[r]{backward for k'-1 sub-blocks}
             }
         }
     }
@@ -382,7 +417,7 @@ Treeverse算法和Bennett算法分别是源代码后向自动微分（一种通�
         }
 
          \#~以$\kappa$为最优分割点（二项分布），递归调用Treeverse算法\;
-        \While{\rm $\tau>0$ {\bf and} $\kappa=\lceil(\delta\sigma + \tau\phi)/(\tau+\delta)\rceil < \phi$}{
+        \While{\rm $\tau>0$ {\bf and} $\kappa={\rm mid}(\delta, \tau, \sigma, \phi) < \phi$}{
             $\overline{s_{\kappa}}$ = treeverse($s_\sigma$, $S$, $\overline{s_\phi}$, $\delta$, $\tau$, $\sigma$, $\kappa$, $\phi$)\;
             $\tau = \tau-1$\;
             $\phi = \kappa$
@@ -391,11 +426,17 @@ Treeverse算法和Bennett算法分别是源代码后向自动微分（一种通�
         \If{\rm $\phi-\sigma \neq 1$}{
             \texttt{error("treeverse fails!")} \Comment*[r]{由于总步长$n\neq \eta(\tau+\delta, \delta)$，实际实现应处理该异常}
         }
-        $\overline{s_\sigma} = \overline{s_{\sigma+1}}\frac{\partial s_{\sigma+1}}{\partial s_\sigma}$\Comment*[r]{利用已有的$s_\sigma$和$\overline{s_\phi}$回传导数}
+        $\overline{s_\sigma} = \overline{f_\sigma}(\overline{s_{\sigma+1}}, s_\sigma)$\Comment*[r]{利用已有的$s_\sigma$和$\overline{s_\phi}$回传导数}
         \If{\rm $\sigma>\beta$}{
             remove($S[\beta]$) \Comment*[r]{从缓存的状态集合中移除$s_\beta$}
         }
         {\bf return} $\overline{s_\sigma}$
+    }
+    \Fn{\rm mid($\delta$, $\tau$, $\sigma$, $\phi$) \hspace{7cm}\# 选取二项分布分割点}{
+        $\kappa = \lceil(\delta\sigma + \tau\phi)/(\tau+\delta)\rceil$\;
+        \If{$\kappa \geq \phi$ {\bf and} $\delta > 0$}{
+            $\kappa$ = max($\sigma+1$, $\phi-1$)
+        }
     }
     \caption{Treeverse算法}\label{alg:treeverse}
 \end{algorithm}
