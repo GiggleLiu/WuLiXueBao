@@ -23,6 +23,7 @@
 \SetKwInput{KwResult}{输出}
 \SetKwComment{Comment}{$\#$\ }{}
 \newcommand{\vx}{{\mathbf{x}}}
+\def\D{\mathrm{d}}
 %\renewcommand\baselinestretch{1.235}\protect
 \renewcommand\baselinestretch{2.0}\protect
 \newcommand{\bigO}{{\mathcal{O}}}
@@ -113,7 +114,7 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
 \section{共轭态法与自动微分方法}\label{sec:forwardbackward}
 
     物理模拟过程的常见求解方案是将偏微分方程的空间部分离散并作差分处理~\cite{Grote2010}，将其转换为对时间的常微分方程
-    $$\frac{d s}{d t} = f(s, t, \theta)$$
+    $$\frac{\D s}{\D t} = f(s, t, \theta)$$
 其中$s$为状态，$t$为时间，$\theta$为控制参数。假设我们已经拥有一个常微分方程方程求解器来得到末态
 这个常微分方程求解器在求解过程中会把时间离散化，作$n$步叠代，每步仅做从时刻$t_i$到时刻$t_{i}+\Delta t$的演化。
 
@@ -172,55 +173,70 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
         \caption{(a) 前向自动微分和 (b) 后向自动微分再常微分方程中的应用，其中圆圈为变量，线条上的箭头梯度传播的方向。}\label{fig:autodifftypes} 
         %\caption{利用自动微分计算对于计算过程$y = z * \sin(x)$的导数$\overline{x}\equiv \frac{\partial y}{\partial x}$和$\overline{z}\equiv \frac{\partial y}{\partial z}$。其中圆圈代表函数，线代表变量，箭头代表运算方向，$\Sigma$是一个用于缓存中间计算结果的全局堆栈（一种以先进后出的存储结构）而\texttt{push}和\texttt{pop}分别代表了对该堆栈的入栈（存储）和出栈（取出）操作。}\label{fig:autodifftypes} 
 \end{figure}
-数学中，在对一个输入变量$p$求导时，会让它携带一个无穷小量$dp$，并通过对这个无穷小量的运算完成对程序的求导。比如当作用函数$f$时，会有如下链式法则
+数学中，在对一个输入变量$p$求导时，会让它携带一个无穷小量$\D p$，并通过对这个无穷小量的运算完成对程序的求导。比如当作用函数$f$时，会有如下链式法则
 \begin{align}
-    f(\vec x+ \frac{\partial \vec x}{\partial p} dp) = f(\vec x) + \frac{\partial f(\vec x)}{\partial \vec x}\frac{\partial \vec x}{\partial p} dp
+    f(\vec x+ \frac{\D \vec x}{\D p} \D p) = f(\vec x) + \left(\frac{\D f(\vec x)}{\D \vec x}\frac{\D \vec x}{\D p}\right) \D p
 \end{align}
-其中$\frac{\partial f(\vec x)}{\partial \vec x}$为局域雅可比矩阵，
+其中$\vec x$为输入函数$f$的参数的集合，包括$p$本身。$\frac{\D f(\vec x)}{\D \vec x}$为局域雅可比矩阵，
 实际程序实现中，这个局域雅可比矩阵并不需要构造出来。由于任何程序都具有可拆分为基础指令的特点，人们把程序拆解为基础标量指令，并在这些基础指令上实现自动微分的局域变换规则。
-具体来说一个标量会同时记录它的数值和一阶小量的系数$(x_i, \frac{\partial x_i}{\partial p})$，人们通过重新定义它的基本运算规则 (如$\sin: (x, \overset{\rightharpoonup} x) \mapsto (\sin x, \overset{\rightharpoonup} x\cos x)$，其中$\overset{\rightharpoonup} x = \frac{\partial x}{\partial p}$) 使得其在计算同时更新一阶小量的系数。
+具体来说一个标量会同时记录它的数值和一阶小量的系数$(v, \dot v)$，其中$\dot v = \frac{\D v}{\D p}$，人们通过重新定义它的基本运算规则，如
+$$\texttt{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
+使得其在计算同时更新一阶小量的系数。
 简单的运算规则的替换对于人类来说尚可手动，但真实的程序可能会包含数以亿计的这样的基础操作，虽然结果依然是解析的，但是人们很难再通过人力得到具体的导数表达式，而计算机恰恰很擅长这样繁琐但是规则简单的任务。
 如图~\ref{fig:autodifftypes} (a) 所示，在求解常微分方程中，单步前向自动微分可以形式化的表达为
 \begin{align*}
-    (s_{i+1}, \frac{d s_{i+1}}{d s_0}) = ({\rm ODEStep}(s_{i}, t_i, \theta, \Delta t), \frac{d s_{i+1}}{\partial s_i} \frac{\partial s_{i}}{\partial s_0})\\
-    (\theta, \frac{d s_{i+1}}{d \theta}) = ({\rm ODEStep}(s_{i}, t_i, \theta, \Delta t), \frac{\partial s_{i+1}}{\partial s_i} \frac{d s_{i}}{d \theta} + \frac{\partial s_{i+1}}{\partial \theta})
+    {\rm ODEStep}^{\rm F} : \left(\left(s_{i+1}, \frac{\D s_{i+1}}{\D s_0}\right), \left(\theta, \frac{\D s_{i+1}}{\D \theta}\right)\right)
+        \mapsto &\left(\left({\rm ODEStep}\left(s_{i}, t_i, \theta, \Delta t \right), \frac{\partial s_{i+1}}{\partial s_i} \frac{\D s_{i}}{\D s_0}\right)\right., \\
+        &\left.\left(\theta, \frac{\partial s_{i+1}}{\partial s_i} \frac{\D s_{i}}{\D \theta} + \frac{\partial s_{i+1}}{\partial \theta}\right)\right)
 \end{align*}
-其中第二个域为一阶无穷小量的系数（导数），由于状态$s_i, s_{i+1}$和控制参数$\theta$均可包含多个变量，上述偏微分均解释为雅可比行列式，
-真实的计算中，并不需要构造出具体的局域雅可比矩阵$\frac{\partial s_{i+1}}{\partial s_i}$并做复杂度较高的矩阵乘法，而是通过上述对基本运算符的重载来实现。
+由于状态$s_i, s_{i+1}$和控制参数$\theta$均可包含多个变量，上述偏微分均解释为雅可比行列式。
+真实的程序计算中，仅通过基本运算的代码替换或者算符重载即可实现该变换。
 %因为一些如\texttt{ForwardDiff}这样优秀的前向自动微分库，我们并不需要手动实现这些链式法则以及基础微分规则。
-
-值得注意的是，如果每次只求导单个变量，求导时间会随着需求导的变量的数目线性增长。但如果同时更行整个雅可比行列式，但此时空间随着求导变量数目线性增加。
+这里还有一个与计算时间有关的要素，那就是一次对多少个变量求导。如果同时更行整个雅可比行列式，计算空间随着求导变量数目线性增加。
 %图~\ref{fig:autodifftypes} (a)所示的是对函数$y=z *\sin(x)$的前向自动微分，这个函数仅仅包含两步运算$\sin$与$*$。程序中每个变量都记录了三个域，分别是\texttt{(变量本身, $\epsilon^x$的系数, $\epsilon^z$的系数)}，每当经过一个函数便同时更新数值和两个无穷小量的系数，因此整个函数的运行空间和一次求导的变量的个数也成正比。
-在实践中，在内存大小有限且需要求导变量较多的情况下，一般是重复运行多次计算过程，一次只处理若干个变量的导数这样分批次求导。
+在实践中，在内存大小有限且需要求导变量较多的情况下，一般是重复运行多次计算过程，一次只处理若干个变量的导数这样分批次求导。无论是哪种情况，求导时间都会随着需求导的变量的数目线性增长，这是限制前向自动微分应用场景的最主要因素。
 
 \subsection{后向自动微分}
-图~\ref{fig:autodifftypes} (b) 展示了后向自动微分的前向计算过程和梯度反向传播过程，它通过如下链式法则完成求导
+后向自动微分与前向自动微分梯度传播方向相反，它解决了前向自动微分中计算开销随着需要求导的变量数目线性增长的问题。后向自动微分包括前向计算和梯度后向传播两个过程。前向计算过程中，程序进行普通的计算，但是会保存部分中间结果到一个全局存储空间$\Sigma$中，最后计算得到一个标量为损失$\mathcal{L}$。
+梯度回传的过程是计算导数的过程，可表示为更新一个变量的对偶量的过程$\overline{v} = \frac{\partial \mathcal{L}}{\partial v}$。从$\overline{\mathcal L} = 1$出发，
+梯度回传过程中对应的链式法则为
 %前向计算过程中除了运算本身，还会将部分运算的中间结果通过\texttt{push($\Sigma$, x)}操作压栈将一个变量\texttt{x}其放入一个全局堆栈$\Sigma$中，
 %而后向过程将这些缓存的结果通过\texttt{x = pop($\Sigma$)}操作出栈并利用如下递推公式计算导数
-\begin{align}
-    \overline{x} = \overline{y}\frac{\partial f(x)}{\partial x}
-\end{align}
-其中，$\overline{\cdot}$代表了损失对相应变量的微分$\frac{\partial \mathcal{L}}{\partial \cdot}$，这里$\mathcal{L}$为标量损失函数，且$\frac{\partial \mathcal L}{\partial \mathcal L}\equiv 1$。
-导数回传的计算复杂度与需要求导的变量数目无关，因此它在求导$\sim 10^2$以上的输入变量的优化问题中对比前向自动微分拥有优势，这也是为什么所有的主流自动微分框架都采用梯度后向传播的模式。
-后向自动微分也有缺点，那就是向堆栈中存储数据带来了正比于计算步骤数 ($\bigO(T)$)的额外空间开销以及频繁访问内存带来的性能下降的问题，这是后向自动微分框架设计的复杂性的来源。
-在求解常微分方程的自动微分过程中，其前向计算过程（左侧）和反向传播过程（右侧）分别为
-
-\begin{minipage}{0.45\textwidth}
 \begin{align*}
-    &s_{i+1} = {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t)\\
-    &\texttt{push}(\Sigma, s_{i})
+    \frac{\D \mathcal{L}}{\D x} &= \sum_y\frac{\partial \mathcal{L}}{\partial y}\frac{\partial y}{\partial x}\\
 \end{align*}
-\end{minipage}
-\begin{minipage}{0.45\textwidth}
+对于基础函数$y=f(x)$，对应的对偶量的运算规则为
 \begin{align*}
-    s_{i} &= \texttt{pop}(\Sigma)\\
-    \overline{s_i} &= \overline{s_{i+1}}\frac{\partial s_{i+1}}{\partial s_{i}}
+    \overline f: \overline x \mapsto \overline x + \overline y\frac{\partial y}{\partial x}
 \end{align*}
-\end{minipage}
 
+其中，$\frac{\partial y}{\partial x}$为局域雅可比矩阵，它不需要被具体的计算，
+而是以函数的形式，连同所需的中间变量一起存放在栈中，并在后向传播中按照后进先出的顺序调用。
+如图~\ref{fig:autodifftypes} (b) 所示，
+在求解常微分方程的自动微分过程中，其前向计算过程（左侧）和反向传播过程（右侧）分别可以形式化的表达为
+
+%\begin{minipage}{0.45\textwidth}
+\begin{align*}
+    {\rm ODEStep}^{\rm B} : s_{i} \mapsto
+    \left(\texttt{push}(\Sigma, s_{i});
+    {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t)\right)
+\end{align*}
+%\end{minipage}
+%\begin{minipage}{0.45\textwidth}
+\begin{align*}
+    \overline{\rm ODEStep}^{\rm B} : (\overline s_{i+1}, \overline\theta) \mapsto \left(s_{i} = \texttt{pop}(\Sigma);
+    \left(\overline{s_{i+1}}\frac{\partial s_{i+1}}{\partial s_{i}}
+    ,\overline{\theta} + \overline{s_{i+1}}\frac{\partial s_{i+1}}{\partial \theta}\right)\right)
+\end{align*}
+%\end{minipage}
+
+这里前向计算过程中除了运算本身，还会将部分运算的中间结果通过入栈操作\texttt{push($\Sigma$,$s_i$)}将状态$s_i$的值放入一个全局堆栈$\Sigma$中，而后向过程将这些缓存的结果通过出栈操作\texttt{x = pop($\Sigma$)}取出$s_i$的值并利用后向传播规则更新$\overline s_i$和$\overline \theta$。
+%导数回传的计算复杂度与需要求导的变量数目无关，因此它在求导$\sim 10^2$以上的输入变量的优化问题中对比前向自动微分拥有优势，这也是为什么所有的主流自动微分框架都采用梯度后向传播的模式。
+%后向自动微分也有缺点，那就是向堆栈中存储数据带来了正比于计算步骤数 ($\bigO(T)$)的额外空间开销以及频繁访问内存带来的性能下降的问题，这是后向自动微分框架设计的复杂性的来源。
+虽然导数回传的计算复杂度与需要求导的变量数目无关，但后向自动微分向堆栈中存储数据带来了正比于计算步骤数 (i.e. $\bigO(T)$)的额外空间开销。
 如何设计算法在保证对计算状态逆序的访问的前提下，减少计算中使用的堆栈$\Sigma$的大小，是我们在章节~\ref{sec:timespace}中要讨论的一个至关重要的问题。
 
-\section{后向自动微分的时间与空间的权衡}\label{sec:timespace}
+\section{时间与空间的权衡}\label{sec:timespace}
 在反向自动微分中，比起将每一步的计算状态保存到堆栈，有时候我们也可以通过“重计算”的方式来得到一部分中间状态。
 
 \begin{minipage}{0.45\textwidth}
