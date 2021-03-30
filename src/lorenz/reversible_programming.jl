@@ -16,7 +16,7 @@ end
     Y.z += X.z/b
 end
 
-@i function lorentz!(y!::P3{T}, t, y::P3{T}, θ) where T
+@i function lorenz!(y!::P3{T}, t, y::P3{T}, θ) where T
     @routine @invcheckoff begin
         @zeros T a b c b_a ab αc ac
         a += y.x

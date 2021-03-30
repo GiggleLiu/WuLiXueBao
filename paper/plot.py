@@ -43,7 +43,7 @@ class PLT(object):
         ChineseFont2 = FontProperties(fname='/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf')
         with DataPlt(filename="fig2.%s"%tp, figsize=(7,4)) as dp:
             ax1 = plt.subplot(121)
-            errors = np.loadtxt("lorentz/data/errors.dat")
+            errors = np.loadtxt("lorenz/data/errors.dat")
             xs = np.arange(len(errors))
             plt.plot(xs, errors, lw=1.5)
             plt.xlabel(u"积分步数", fontproperties = ChineseFont2, fontsize=14)
@@ -51,7 +51,7 @@ class PLT(object):
             plt.yscale("log")
             plt.xlim(0,1000)
             ax2 = plt.subplot(122)
-            data = np.loadtxt("lorentz/data/neuralode_checkpoint.dat")
+            data = np.loadtxt("lorenz/data/neuralode_checkpoint.dat")
             xs = data[:,0]
             ys = data[:,1]
             plt.plot(xs, ys, lw=1.5, marker="o")
@@ -126,5 +126,25 @@ class PLT(object):
             c.text(r"$\frac{\partial \mathcal{L}}{\partial \vec s_{i+1}}$", "top", fontsize=FONTSIZE, color='r', text_offset=0.1)
             d.text(r"$\frac{\partial \mathcal{L}}{\partial \vec s_{n}}$", "top", fontsize=FONTSIZE, color='r', text_offset=0.1)
             e.text(r"$1$", "top", fontsize=FONTSIZE, text_offset=0.1, color='r')
+
+    def fig4(self, tp='pdf'):
+        fname="./lorenz_grad"
+        with DataPlt(filename="fig4.%s"%tp, figsize=(6,4)) as dp:
+            mg = np.loadtxt(fname + "_heatmap.dat")
+            vmin, vmax = -5, 15
+            mg[mg<10**vmin] = 10**vmin
+            mg[mg>10**vmax] = 10**vmax
+            curve = np.loadtxt(fname + "_curve.dat")
+            σs = np.linspace(0,20,mg.shape[0])
+            ρs = np.linspace(0,50,mg.shape[1])
+
+            ax = plt.pcolormesh(σs, ρs, np.log10(mg).T, shading="auto", vmin=vmin-0.1, vmax=vmax+0.1, cmap='inferno')
+            ax.set_edgecolor('face')
+            plt.ylim(0,50)
+            plt.xlim(0,20)
+            curve[σs < 4] = 51
+            plt.plot(σs, curve, color="black", lw=2, label="theoretical")
+            plt.colorbar()
+            plt.legend()
 
 fire.Fire(PLT())

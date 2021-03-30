@@ -1,8 +1,8 @@
 using Test, TreeverseAndBennett
 using Compose, Pkg
 
-@testset "lorentz" begin
-    include("lorentz.jl")
+@testset "lorenz" begin
+    include("lorenz.jl")
 end
 
 @testset "seismic" begin

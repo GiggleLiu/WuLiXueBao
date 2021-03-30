@@ -119,7 +119,7 @@ end
 
 export plot_pebblegame
 
-function plot_pebblegame(; fname=nothing)
+function plot_pebblegame(; fname=nothing, language="CN")
     NX1 = 21
     NX2 = 17
     img1, NY1 = treeverse_pebblegame(NX1-1, 3)
@@ -131,15 +131,17 @@ function plot_pebblegame(; fname=nothing)
     y0 = 0.115
     x1 = 0.55
     y1 = 0.115
+    GRID = language == "CN" ? "格子" : "Square"
+    STEP = language == "CN" ? "步骤" : "Step"
     img = Compose.compose(context(),
         (context(), line([(x0, y0), (x0+0.15, y0)]), arrow(), stroke("black")),
-        (context(), text(x0+0.03, y0-0.01, "格子 × 21"), font("ubuntu"), fontsize(5)),
+        (context(), text(x0+0.03, y0-0.01, "$GRID × 21"), font("ubuntu"), fontsize(5)),
         (context(), line([(x0, y0), (x0, y0+0.15)]), arrow(), stroke("black")),
-        (context(), text(x0-0.025, y0+0.075, "步骤 × 46", hcenter, vcenter, Rotation(-π/2,x0-0.025, y0+0.075)), font("ubuntu"), fontsize(5)),
+        (context(), text(x0-0.025, y0+0.075, "$STEP × 46", hcenter, vcenter, Rotation(-π/2,x0-0.025, y0+0.075)), font("ubuntu"), fontsize(5)),
         (context(), line([(x1, y1), (x1+0.15, y1)]), arrow(), stroke("black")),
-        (context(), text(x1+0.03, y1-0.01, "格子 × 17"), font("ubuntu"), fontsize(5)),
+        (context(), text(x1+0.03, y1-0.01, "$GRID × 17"), font("ubuntu"), fontsize(5)),
         (context(), line([(x1, y1), (x1, y1+0.15)]), arrow(), stroke("black")),
-        (context(), text(x1-0.025, y1+0.075, "步骤 × 41", hcenter, vcenter, Rotation(-π/2,x1-0.025, y1+0.075)), font("ubuntu"), fontsize(5)),
+        (context(), text(x1-0.025, y1+0.075, "$STEP × 41", hcenter, vcenter, Rotation(-π/2,x1-0.025, y1+0.075)), font("ubuntu"), fontsize(5)),
         (context(), text(0.05, 0.07, "(a)"), fontsize(5)),
         (context(), text(0.55, 0.07, "(b)"), fontsize(5)),
         (context(0.1, y0+0.02, 0.8*NX1/NN, 0.8*NY1/NN), img1),

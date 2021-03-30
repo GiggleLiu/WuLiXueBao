@@ -1,5 +1,5 @@
-@i function lorentz_step!(y!::T, y::T, θ; Δt) where T
-    i_ODEStep((@skip! RK4()), (@skip! lorentz!), y!, y, θ; Δt, t=0.0)
+@i function lorenz_step!(y!::T, y::T, θ; Δt) where T
+    i_ODEStep((@skip! RK4()), (@skip! lorenz!), y!, y, θ; Δt, t=0.0)
 end
 
 @i function bennett_loss(out, step, y, x, θ; kwargs...)
@@ -12,8 +12,8 @@ function bennett_finger_printing(N::Int, k)
     x0 = P3(1.0, 0.0, 0.0)
     θ = (0.0, 0.0, 0.0)
     logger = BennettLog()
-    #NiLang.AD.gradient(bennett_loss, (0.0, lorentz_step!, zero(P3{Float64}), x0); iloss=1, Δt=3e-3, k=k, N=N, logger=logger)[4]
-    bennett_loss(0.0, lorentz_step!, zero(P3{Float64}), x0, θ; Δt=3e-3, k=k, N=N, logger=logger)
+    #NiLang.AD.gradient(bennett_loss, (0.0, lorenz_step!, zero(P3{Float64}), x0); iloss=1, Δt=3e-3, k=k, N=N, logger=logger)[4]
+    bennett_loss(0.0, lorenz_step!, zero(P3{Float64}), x0, θ; Δt=3e-3, k=k, N=N, logger=logger)
     fcalls = logger.fcalls[1:length(logger.fcalls)*4÷7]
 
     eb1 = bondstyle(:line, linewidth(0.1mm), stroke("red"))

@@ -1,4 +1,4 @@
-module Lorentz
+module Lorenz
 
 using ..TreeverseAndBennett: RK4, ODESolve, Glued, checkpointed_neuralode, i_ODESolve, i_ODEStep
 using ReversibleSeismic: build_aug_dynamics
@@ -12,7 +12,7 @@ using NiLang.AD: GVar
 using NiLang
 using Statistics
 
-export P3, lorentz
+export P3, lorenz
 
 include("point.jl")
 include("bennett.jl")
