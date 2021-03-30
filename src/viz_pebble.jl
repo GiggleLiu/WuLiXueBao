@@ -37,6 +37,7 @@ end
 function bennett_pebblegame(N::Int, k)
     logger = NiLang.BennettLog()
     bennett(PlusEq(identity), 0.0, 0.0; logger=logger, k=k, N=N)
+    println("Bennett peak memory = ", logger.peak_mem[])
     NY = length(logger.fcalls)÷2+1
     X = 1cm*(N+1)
     Y = 1cm*NY
@@ -47,7 +48,7 @@ function bennett_pebblegame(N::Int, k)
         dy = 1/(N+1)
 
         for (i, f) in enumerate(logger.fcalls[1:NY])
-            if f[3] isa NiLangCore.Inv
+            if f[3] isa NiLangCore.MinusEq
                 k = findfirst(==(f[2]-1), pebbles)
                 deleteat!(pebbles, k)
                 removed = [f[2]-1]
@@ -69,18 +70,10 @@ function treeverse_pebblegame(N::Int, δ)
     x0 = 0.0
     logger = TreeverseLog()
     g_tv = treeverse(x->0.0, (x,z)->0.0, 0.0; N=N, δ=δ,logger=logger)
+    println("Treeverse peak memory = ", logger.peak_mem[])
     X = 1cm*(N+1)
 
     actions = copy(logger.actions)
-    ptr = 1
-    while length(actions)>0 && ptr<length(actions)
-        if actions[ptr].action == :fetch && actions[ptr+1].action == :store && actions[ptr].step == actions[ptr+1].step
-            deleteat!(actions, [ptr, ptr+1])
-        else
-            ptr += 1
-        end
-    end
-
     NY = count(a->a.action == :call, actions)+1
     Y = 1cm*NY
     Compose.set_default_graphic_size(X, Y)
@@ -140,11 +133,11 @@ function plot_pebblegame(; fname=nothing)
     y1 = 0.115
     img = Compose.compose(context(),
         (context(), line([(x0, y0), (x0+0.15, y0)]), arrow(), stroke("black")),
-        (context(), text(x0+0.03, y0-0.01, "格子 × 20"), font("ubuntu"), fontsize(5)),
+        (context(), text(x0+0.03, y0-0.01, "格子 × 21"), font("ubuntu"), fontsize(5)),
         (context(), line([(x0, y0), (x0, y0+0.15)]), arrow(), stroke("black")),
         (context(), text(x0-0.025, y0+0.075, "步骤 × 46", hcenter, vcenter, Rotation(-π/2,x0-0.025, y0+0.075)), font("ubuntu"), fontsize(5)),
         (context(), line([(x1, y1), (x1+0.15, y1)]), arrow(), stroke("black")),
-        (context(), text(x1+0.03, y1-0.01, "格子 × 16"), font("ubuntu"), fontsize(5)),
+        (context(), text(x1+0.03, y1-0.01, "格子 × 17"), font("ubuntu"), fontsize(5)),
         (context(), line([(x1, y1), (x1, y1+0.15)]), arrow(), stroke("black")),
         (context(), text(x1-0.025, y1+0.075, "步骤 × 41", hcenter, vcenter, Rotation(-π/2,x1-0.025, y1+0.075)), font("ubuntu"), fontsize(5)),
         (context(), text(0.05, 0.07, "(a)"), fontsize(5)),

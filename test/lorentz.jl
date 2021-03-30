@@ -7,11 +7,12 @@ using NiLang
     x0 = P3(1.0, 0.0, 0.0)
 
     for N in [20, 120, 126]
-        g_fd = ForwardDiff.gradient(x->ODESolve(RK4(), lorentz, P3(x...), nothing; ts=0.0:3e-3:N*3e-3).x, [x0.x, x0.y, x0.z])
-        gn = (0.0, P3(1.0, 0.0, 0.0))
+        g_fd = ForwardDiff.gradient(x->ODESolve(RK4(), lorentz, P3(x[1:3]...), (x[4:6]...,); ts=0.0:3e-3:N*3e-3).x, [x0.x, x0.y, x0.z, 10, 27, 8/3])
+        gn = ((0.0, P3(1.0, 0.0, 0.0)), (0.0, 0.0, 0.0))
         log = TreeverseLog()
-        g_tv = treeverse(Lorentz.step_fun, (x,g)->Lorentz.grad_fun(x,g===nothing ? gn : g), (0.0, x0); δ=4, N=N)
-        @test g_fd ≈ [g_tv[2].x, g_tv[2].y, g_tv[2].z]
+        θ = (10.0, 27.0, 8/3)
+        g_tv, g_θ = treeverse(x->Lorentz.step_fun(x, θ), (x,g)->Lorentz.grad_fun(x,g===nothing ? gn : g, θ), (0.0, x0); δ=4, N=N)
+        @test g_fd ≈ [g_tv[2].x, g_tv[2].y, g_tv[2].z, g_θ...]
     end
 end
 
@@ -21,10 +22,11 @@ end
     state = Dict{Int,Tuple{Float64,P3{Float64}}}()
 
     for Nt in [20, 120, 126]
-        g_fd = ForwardDiff.gradient(x->ODESolve(RK4(), lorentz, P3(x...), nothing; ts=0.0:Δt:Nt*Δt).x, [x0.x, x0.y, x0.z])
+        g_fd = ForwardDiff.gradient(x->ODESolve(RK4(), lorentz, P3(x[1:3]...), (x[4:6]...,); ts=0.0:3e-3:Nt*3e-3).x, [x0.x, x0.y, x0.z, 10, 27, 8/3])
         logger = NiLang.BennettLog()
-        g_bn = NiLang.AD.gradient(Lorentz.bennett_loss, (0.0, Lorentz.lorentz_step!, zero(P3{Float64}), x0); iloss=1, Δt=Δt, N=Nt, k=3, logger=logger)[4]
-        @test g_fd ≈ [g_bn.x, g_bn.y, g_bn.z]
+        θ = (10.0, 27.0, 8/3)
+        g_bn, g_θ = NiLang.AD.gradient(Lorentz.bennett_loss, (0.0, Lorentz.lorentz_step!, zero(P3{Float64}), x0, θ); iloss=1, Δt=Δt, N=Nt, k=3, logger=logger)[[4,5]]
+        @test g_fd ≈ [g_bn.x, g_bn.y, g_bn.z, g_θ...]
         @test length(logger.fcalls) > 0
     end
 end

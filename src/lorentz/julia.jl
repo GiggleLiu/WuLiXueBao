@@ -10,6 +10,8 @@ end
     P3(a*b.x, a*b.y, a*b.z)
 end
 
+# test case, θ = (10, 27, 8/3)
 function lorentz(t, y, θ)
-    P3(10*(y.y-y.x), y.x*(27-y.z)-y.y, y.x*y.y-8/3*y.z)
+    σ, ρ, β = θ
+    P3(σ*(y.y-y.x), y.x*(ρ-y.z)-y.y, y.x*y.y-β*y.z)
 end

@@ -24,11 +24,11 @@ end
         c += y.z
         b_a += b-a
         ab += a * b
-        αc += (8/3) * c
-        c -= 27
+        αc += (θ |> tget(3)) * c
+        c -= (θ |> tget(2))
         ac += a * c
     end
-    y!.x += 10 * b_a
+    y!.x += (θ |> tget(1)) * b_a
     y!.y -= ac + b
     y!.z += ab - αc
     ~@routine
