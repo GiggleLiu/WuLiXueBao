@@ -136,15 +136,18 @@ class PLT(object):
             mg[mg>10**vmax] = 10**vmax
             curve = np.loadtxt(fname + "_curve.dat")
             σs = np.linspace(0,20,mg.shape[0])
-            ρs = np.linspace(0,50,mg.shape[1])
+            rhos = np.linspace(0,50,mg.shape[1])
 
-            ax = plt.pcolormesh(σs, ρs, np.log10(mg).T, shading="auto", vmin=vmin-0.1, vmax=vmax+0.1, cmap='inferno')
+            ax = plt.pcolormesh(σs, rhos, np.log10(mg).T, shading="auto", vmin=vmin-0.1, vmax=vmax+0.1, cmap='inferno')
             ax.set_edgecolor('face')
             plt.ylim(0,50)
             plt.xlim(0,20)
             curve[σs < 4] = 51
             plt.plot(σs, curve, color="black", lw=2, label="theoretical")
             plt.colorbar()
+            plt.xlabel(r"$\sigma$")
+            plt.ylabel(r"$\rho$")
             plt.legend()
+            plt.tight_layout()
 
 fire.Fire(PLT())

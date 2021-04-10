@@ -48,7 +48,7 @@
 
 %\address{3)}{}
 
-\abstract{自动微分是利用计算机自动化求导的技术，最近几十年因为被用于机器学习研究而被很多人了解。
+\abstract{自动微分是利用计算机自动化求导的技术，最近几十年因为它在机器学习研究中的应用而被很多人了解。
 如今越来越多的物理学者意识到高效的，自动化的求导可以对很多物理问题的求解提供新的思路。
 其中自动微分在物理模拟问题中的应用尤为重要且具有挑战性。
 本文介绍如何将自动微分技术运用到物理模拟的求导中，介绍了共轭态法，前向自动微分，后向自动微分以及可逆计算自动微分的基本概念，
@@ -488,16 +488,19 @@ Treeverse算法和Bennett算法分别是源代码后向自动微分（一种通�
 \end{table}
 
 \section{自动微分在物理模拟中的应用}\label{sec:applications}
+本章节有两个案例，其一是用前向自动微分和共轭态法求解参数较少的洛伦茨函数的导数，
+其二是用最基于最优检查点算法和Bennett算法的后向微分对参数较多且内存吃紧的地震学模拟的求导。
 
-\subsection{洛伦兹方程求解}
-洛伦兹系统是人们研究混沌的经典模型，它描述了一个三维空间中的一个点的坐标在$(x,y,z)$的动力学由洛伦兹方程决定
+\subsection{洛伦茨方程求解}
+洛伦茨系统是人们研究混沌的经典模型，它描述了一个三维空间中一个坐标点$(x,y,z)$的动力学。该动力学满足洛伦茨方程
 \begin{align*}
     \frac{\D x}{\D t} &= \sigma(y - x),\\
     \frac{\D y}{\D t} &= x(\rho -z) - y,\\
     \frac{\D z}{\D t} &= xy-\beta z.
 \end{align*}
-其中，$\sigma$, $\rho$和$\beta$为三个控制参数。数值模拟中，我们用Runge-Kutta方法对时间部分积分并得到末了位置。
-它对控制参数和初始位置的导数决定了末了位置对控制参数和初始位置的敏感度。
+其中，$\sigma$, $\rho$和$\beta$为三个控制参数，理论上，当$\rho < \sigma \frac{\sigma + \beta + 3}{\sigma - \beta - 1}$时，系统处于稳定状态。数值模拟中，我们用Runge-Kutta方法对时间部分积分并得到末了位置，我们固定初始位置$(x_0,y_0,z_0) = (1, 0, 0)$以及控制参数$\beta=8/3$，积分时间区间为$[0,T=30]$，积分步长为$3\times 10^{-3}$。
+末了位置坐标对控制参数和初始坐标的导数反映了末态对控制参数和初始位置的敏感度，它一定程度的反映了浑沌现象。
+我们可以用前向自动微分求出终了$x$坐标对初始位置和控制参数的导数$(\frac{\partial x_T}{\partial x_0}, \frac{\partial x_T}{\partial y_0}, \frac{\partial x_T}{\partial z_0})$和$(\frac{\partial x_T}{\partial\sigma}, \frac{\partial x_T}{\partial\rho}, \frac{\partial x_T}{\partial\beta})$的绝对值的平均，并把它们与初始$\rho,\sigma$的关系画在图~\ref{fig:chaos}中。可以看出处于稳定区间（黑线下方）的导数远小于混沌区间（黑线上方）的导数，分界点和理论预言基本一致。
 
 \begin{figure}[t]
 \centering
@@ -505,7 +508,9 @@ Treeverse算法和Bennett算法分别是源代码后向自动微分（一种通�
     \caption{Lorenz系统的初始位置和控制参数的导数的大小与系统出现混沌的关系。\label{fig:chaos}} 
 \end{figure}
 
-
+由于这里的参数较少，所以前向自动微分可以做到几乎没有额外时间和空间开销的严格求导。
+共轭态法求导理论上也可以做到无额外内存消耗，但是会引入由于积分器不可逆带来的系统误差。我们以前向自动微分的导数是严格的导数作为基准，把共轭态法求得的导数的$l^2$相对误差与积分步长的关系绘制于图~\ref{fig:neuralode-error} (a)中，相对误差随着积分步长指数增加。
+因此，我们需要每隔一段积分，就设置一个检查点重新加载严格的导数。图 (b) 显示检查点越密，误差越小，消耗的额外空间也越多。检查点越稀疏，则误差越大，消耗的额外空间越少。
 
 \begin{figure}[t]
 \centering
@@ -516,7 +521,7 @@ Treeverse算法和Bennett算法分别是源代码后向自动微分（一种通�
 
 \vskip 1.55\baselineskip
 \subsection{地震波的模拟}
-Perfectly matched layer (PML)方程是模拟波在介质中运动的一种准确可靠的方案，
+Perfectly matched layer (PML)方程是模拟波在无限大介质中运动的一种准确可靠的方案，
 在介质中，波场$u(\vec x, t)$的传播可描述为
 \begin{align}
     \begin{cases}
@@ -530,7 +535,7 @@ Perfectly matched layer (PML)方程是模拟波在介质中运动的一种准确
 自动微分也在其中发挥着重要的作用~\cite{Zhu2020}。
 ~\cite{Grote2010}
 
-\vskip 1.55\baselineskip
+%\vskip 1.55\baselineskip
 %\subsection{热带（Tropical）张量网络求解自旋玻璃最优构型}
 %热带张量网络是张量网络的一个特别的应用，它重新定义了张量中基础元素的代数为
 %\begin{eqnarray}
@@ -550,8 +555,6 @@ Perfectly matched layer (PML)方程是模拟波在介质中运动的一种准确
 %\end{equation}
     %因此对它的微分就是。
 %但是作了这样的替换，张量收缩的微分规则就发生了变换。
-
-\section{结~~~~论}
 
 \section*{致谢}
 

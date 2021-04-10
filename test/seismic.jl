@@ -1,4 +1,5 @@
 using TreeverseAndBennett, Test
+using TreeverseAndBennett.Seismic
 
 @testset "demo" begin
     n = 52
@@ -17,4 +18,12 @@ using TreeverseAndBennett, Test
     @test g_nilang[1] ≈ g_bennett[1]
     @test g_nilang[2] ≈ g_bennett[2]
     @test g_nilang[3] ≈ g_bennett[3]
+end
+
+@testset "detector" begin
+    g1 = getgrad_three_layer(method=:treeverse)
+    g2 = getgrad_three_layer(method=:bennett)
+    @test g1[1] ≈ g2[1]
+    @test g1[2] ≈ g2[2]
+    @test g1[3] ≈ g2[3]
 end

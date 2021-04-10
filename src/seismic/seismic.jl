@@ -4,6 +4,8 @@ using KernelAbstractions
 using ReversibleSeismic
 using KernelAbstractions.CUDA
 
+export generate_animation, three_layer, getgrad_three_layer
+
 """
 the reversible loss
 """
@@ -62,9 +64,9 @@ function generate_useq_demo(; nx=80, ny=80, nstep=1500, method=:julia)
     return generate_useq(c; nstep=nstep, method=method)
 end
 
-function generate_animation(tu_seq; stepsize=5, fps=5)
+function generate_animation(tu_seq; stepsize=5, fps=5, clim=(-0.005, 0.005))
     ani = @animate for i=1:stepsize:size(tu_seq, 3)
-        heatmap(tu_seq[2:end-1,2:end-1,i], clim=(-0.005, 0.005))
+        heatmap(tu_seq[2:end-1,2:end-1,i], clim=clim)
     end
     gif(ani, fps=fps)
 end
@@ -129,5 +131,85 @@ function timing(nx::Int, ny::Int; nstep::Int, δ, usecuda=true)
     @time getgrad(c; nstep=nstep, method=:treeverse, usecuda=usecuda, treeverse_δ=δ)
     #g_bennett = getgrad(c, nstep=1000, method=:bennett)
 end
+
+function get_layers(nx, ny)
+    layers = ones(nx+2, ny+2)
+    n_piece = div(nx + 1, 3) + 1
+    for k = 1:3
+        i_interval = (k-1)*n_piece+1:min(k*n_piece, nx+2)
+        layers[:, i_interval] .= 0.5 + (k-1)*0.25
+    end
+    return (3300 .* layers) .^ 2
+end
+
+
+function three_layer(; nstep=1000, nx=201, ny=201)
+    param = AcousticPropagatorParams(nx=nx, ny=ny, 
+        nstep=nstep, dt=0.1/nstep,  dx=200/(nx-1), dy=200/(nx-1),
+        Rcoef = 1e-8)
+
+    rc = Ricker(param, 30.0, 200.0, 1e6)
+ 	srci = nx ÷ 2
+ 	srcj = ny ÷ 5
+    srcv = reshape(rc, :, 1)
+    c = get_layers(nx, ny)
+    solve(param, srci, srcj, rc, c)
+end
+
+function getgrad_three_layer(; nx=201, ny=201, nstep=1000, method=:treeverse, treeverse_δ=50, bennett_k=50, usecuda=false) where T
+    param = AcousticPropagatorParams(nx=nx, ny=ny, 
+        nstep=nstep, dt=0.1/nstep,  dx=200/(nx-1), dy=200/(nx-1),
+        Rcoef = 1e-8)
+    li = LinearIndices((nx+2, ny+2))
+    detector_locs = [li[i,ny÷5] for i=1:nx+2]
+    rc = Ricker(param, 30.0, 200.0, 1e6)
+ 	srci = nx ÷ 2
+ 	srcj = ny ÷ 5
+    srcv = reshape(rc, :, 1)
+    c = get_layers(nx, ny)
+    target_pulses = solve_detector(param, srci, srcj, rc, c, detector_locs)
+    c0 = 3300^2*ones(nx+2, ny+2)
+    target_pulses, _getgrad(c0, param, srci, srcj, rc, target_pulses, detector_locs, method, treeverse_δ, bennett_k, usecuda)
+end
+
+# loss is |u[:,40,:]-ut[:,40,:]|^2
+function _getgrad(c, param, srci, srcj, srcv, target_pulses, detector_locs, method, treeverse_δ, bennett_k, usecuda)
+    nx, ny = size(c) .- 2
+    if method == :treeverse
+        logger = ReversibleSeismic.TreeverseLog()
+        s0 = ReversibleSeismic.SeismicState(Float64, nx, ny)
+        gn = ReversibleSeismic.SeismicState(Float64, nx, ny)
+        gn.u[size(c,1)÷2,size(c,2)÷2+20] -= 1.0
+        if usecuda
+            c = CuArray(c)
+            s0 = togpu(s0)
+            gn = togpu(gn)
+            param = togpu(param)
+        end
+        g_tv_x, g_tv_srcv, g_tv_c = treeverse_solve_detector(Glued(0.0, s0);
+            target_pulses=target_pulses, detector_locs=detector_locs,
+            param=param, c=c, srci=srci, srcj=srcj,
+            srcv=srcv, δ=treeverse_δ, logger=logger)
+        println(logger)
+        return g_tv_x.data[2].u, g_tv_srcv, g_tv_c
+    elseif method == :bennett
+        s0 = SeismicState(Float64, nx, ny)
+        if usecuda
+            c = CuArray(c)
+            s0 = togpu(s0)
+            param = togpu(param)
+        end
+        logger = NiLang.BennettLog()
+        state = Dict(1=>Glued(0.0, s0))
+        CUDA.allowscalar(true)
+        _,gx,_,_,_,gsrcv,gc = NiLang.AD.gradient(i_loss_bennett_detector!, (0.0, state, param, srci, srcj, srcv, c, target_pulses, detector_locs); iloss=1, k=bennett_k, logger=logger)
+        CUDA.allowscalar(false)
+        println(logger)
+        return gx[1].data[2].u, gsrcv, gc
+    else
+        error("")
+    end
+end
+
 
 end

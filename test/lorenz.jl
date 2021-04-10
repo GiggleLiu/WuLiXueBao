@@ -38,7 +38,7 @@ end
     history_julia = logger.history
     history_nilang = Lorenz.f_nilang()
     gf = Lorenz.g_forwarddiff()
-    gn = Lorenz.g_nilang()
+    gn = Lorenz.g_nilang()[1]
     @test gn.x ≈ gf[1]
     @test gn.y ≈ gf[2]
     @test gn.z ≈ gf[3]
