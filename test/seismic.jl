@@ -21,8 +21,12 @@ using TreeverseAndBennett.Seismic
 end
 
 @testset "detector" begin
-    p1, g1 = getgrad_three_layer(method=:treeverse)
-    p2, g2 = getgrad_three_layer(method=:bennett)
+    detector_locs, target_pulses = targetpulses_three_layer()
+    p1, res1, g1 = getgrad_three_layer(method=:treeverse, target_pulses=target_pulses, detector_locs=detector_locs)
+    p2, res2, g2 = getgrad_three_layer(method=:bennett, target_pulses=target_pulses, detector_locs=detector_locs)
+    res3 = loss_three_layer(target_pulses=target_pulses, detector_locs=detector_locs)
+    @test res1 ≈ res2
+    @test res1 ≈ res3
     @test g1[1] ≈ g2[1]
     @test g1[2] ≈ g2[2]
     @test g1[3] ≈ g2[3]
