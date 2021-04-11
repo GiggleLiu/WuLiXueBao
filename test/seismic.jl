@@ -21,8 +21,8 @@ using TreeverseAndBennett.Seismic
 end
 
 @testset "detector" begin
-    g1 = getgrad_three_layer(method=:treeverse)
-    g2 = getgrad_three_layer(method=:bennett)
+    p1, g1 = getgrad_three_layer(method=:treeverse)
+    p2, g2 = getgrad_three_layer(method=:bennett)
     @test g1[1] ≈ g2[1]
     @test g1[2] ≈ g2[2]
     @test g1[3] ≈ g2[3]

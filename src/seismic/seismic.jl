@@ -167,6 +167,11 @@ function getgrad_three_layer(; nx=201, ny=201, nstep=1000, method=:treeverse, tr
  	srcj = ny ÷ 5
     srcv = reshape(rc, :, 1)
     c = get_layers(nx, ny)
+    if usecuda
+        c = CuArray(c)
+        detector_locs = CuArray(detector_locs)
+        param = togpu(param)
+    end
     target_pulses = solve_detector(param, srci, srcj, rc, c, detector_locs)
     c0 = 3300^2*ones(nx+2, ny+2)
     target_pulses, _getgrad(c0, param, srci, srcj, rc, target_pulses, detector_locs, method, treeverse_δ, bennett_k, usecuda)
