@@ -4,7 +4,6 @@ using NiLang.AD
 using KernelAbstractions
 using ReversibleSeismic
 using KernelAbstractions.CUDA
-using Optim
 
 export generate_animation, three_layer, getgrad_three_layer, targetpulses_three_layer, loss_three_layer
 
@@ -153,7 +152,6 @@ function three_layer(; nstep=1000, nx=201, ny=201)
     rc = Ricker(param, 30.0, 200.0, 1e6)
  	srci = nx ÷ 2
  	srcj = ny ÷ 5
-    srcv = reshape(rc, :, 1)
     c = get_layers(nx, ny)
     solve(param, srci, srcj, rc, c)
 end
@@ -162,33 +160,15 @@ function loss_three_layer(; nx=201, ny=201, c=3300^2*ones(nx+2, ny+2), target_pu
     param = AcousticPropagatorParams(nx=nx, ny=ny, 
         nstep=nstep, dt=0.1/nstep,  dx=200/(nx-1), dy=200/(nx-1),
         Rcoef = 1e-8)
-    if usecuda
-        c = CuArray(c)
-        detector_locs = CuArray(detector_locs)
-        param = togpu(param)
-    end
-    solve_detector2(param, srci, srcj, srcv, c, target_pulses, detector_locs).data[1]
-end
-
-function getgrad_three_layer(; nx=201, ny=201, c0=3300^2*ones(nx+2, ny+2), nstep=1000, method=:treeverse, treeverse_δ=50, bennett_k=50, usecuda=false)
-    param = AcousticPropagatorParams(nx=nx, ny=ny, 
-        nstep=nstep, dt=0.1/nstep,  dx=200/(nx-1), dy=200/(nx-1),
-        Rcoef = 1e-8)
-    li = LinearIndices((nx+2, ny+2))
-    detector_locs = [li[i,ny÷5] for i=round.(Int, LinRange(1,nx+2,200))]
     rc = Ricker(param, 30.0, 200.0, 1e6)
  	srci = nx ÷ 2
  	srcj = ny ÷ 5
-    srcv = reshape(rc, :, 1)
-    c = get_layers(nx, ny)
     if usecuda
         c = CuArray(c)
         detector_locs = CuArray(detector_locs)
         param = togpu(param)
     end
-    target_pulses = solve_detector(param, srci, srcj, rc, c, detector_locs)
-    res, g = _getgrad(c0, param, srci, srcj, rc, target_pulses, detector_locs, method, treeverse_δ, bennett_k, usecuda)
-    target_pulses, res, g
+    solve_detector2(param, srci, srcj, rc, c, target_pulses, detector_locs).data[1]
 end
 
 function targetpulses_three_layer(; nx=201, ny=201, c=get_layers(nx, ny), nstep=1000)
@@ -197,10 +177,10 @@ function targetpulses_three_layer(; nx=201, ny=201, c=get_layers(nx, ny), nstep=
         Rcoef = 1e-8)
     li = LinearIndices((nx+2, ny+2))
     detector_locs = [li[i,ny÷5] for i=round.(Int, LinRange(1,nx+2,200))]
+    #detector_locs = [CartesianIndex((rand(1:nx+2), rand(1:ny+2))) for i=1:200]
     rc = Ricker(param, 30.0, 200.0, 1e6)
  	srci = nx ÷ 2
  	srcj = ny ÷ 5
-    srcv = reshape(rc, :, 1)
     target_pulses = solve_detector(param, srci, srcj, rc, c, detector_locs)
     return detector_locs, target_pulses
 end
@@ -213,14 +193,6 @@ function getgrad_three_layer(; nx=201, ny=201, c0=3300^2*ones(nx+2, ny+2), nstep
     rc = Ricker(param, 30.0, 200.0, 1e6)
  	srci = nx ÷ 2
  	srcj = ny ÷ 5
-    srcv = reshape(rc, :, 1)
-    c = get_layers(nx, ny)
-    if usecuda
-        c = CuArray(c)
-        detector_locs = CuArray(detector_locs)
-        param = togpu(param)
-    end
-    target_pulses = solve_detector(param, srci, srcj, rc, c, detector_locs)
     res, g = _getgrad(c0, param, srci, srcj, rc, target_pulses, detector_locs, method, treeverse_δ, bennett_k, usecuda)
     target_pulses, res, g
 end
@@ -235,6 +207,8 @@ function _getgrad(c, param, srci, srcj, srcv, target_pulses, detector_locs, meth
         gn.u[size(c,1)÷2,size(c,2)÷2+20] -= 1.0
         if usecuda
             c = CuArray(c)
+            target_pulses = CuArray(target_pulses)
+            detector_locs = CuArray(detector_locs)
             s0 = togpu(s0)
             gn = togpu(gn)
             param = togpu(param)
@@ -249,6 +223,8 @@ function _getgrad(c, param, srci, srcj, srcv, target_pulses, detector_locs, meth
         s0 = SeismicState(Float64, nx, ny)
         if usecuda
             c = CuArray(c)
+            target_pulses = CuArray(target_pulses)
+            detector_locs = CuArray(detector_locs)
             s0 = togpu(s0)
             param = togpu(param)
         end
@@ -267,15 +243,22 @@ function _getgrad(c, param, srci, srcj, srcv, target_pulses, detector_locs, meth
     end
 end
 
-function train_three_layer(; nx=201, ny=201, nstep=1000, usecuda=false, method=:treeverse)
+#=
+using Optim
+export train_three_layer
+
+function train_three_layer(; nx=201, ny=201, nstep=1000, usecuda=false, method=:treeverse, treeverse_δ=50, bennett_k=50, iterations=100)
     detector_locs, target_pulses = targetpulses_three_layer(; nx=nx, ny=ny, c=get_layers(nx, ny), nstep=nstep)
     c0=3300^2*ones(nx+2, ny+2)
     function gf!(g, x)
         _, _, gs = getgrad_three_layer(; nx=nx, ny=ny, nstep=nstep, c0=x, treeverse_δ=treeverse_δ, bennett_k=bennett_k, detector_locs=detector_locs, target_pulses=target_pulses, usecuda=usecuda, method=method)
-        g .= gs[3]
+        g .= 0
+        g[2:nx+1, 2:ny+1] .= gs[3][2:nx+1, 2:ny+1]
     end
-    opt = optimize(x->loss_three_layer(; c=x, detector_locs=detector_locs, target_pulses=target_pulses, nstep=nstep, nx=nx, ny=ny), gf!, c0, LBFGS())
+    opt = optimize(x->loss_three_layer(; c=x, detector_locs=detector_locs, target_pulses=target_pulses, nstep=nstep, nx=nx, ny=ny), gf!, c0, LBFGS(),
+        Optim.Options(iterations=iterations, g_abstol=0, g_reltol=0, f_abstol=0, f_reltol=0))
     return opt.minimizer
 end
+=#
 
 end
