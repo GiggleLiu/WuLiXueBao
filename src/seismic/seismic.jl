@@ -271,10 +271,14 @@ function run_paper_example(; nx=1000, ny=1000, nstep=10000, method=:treeverse, t
     return loss, gc, log, t
 end
 
-function benchmark(; n=2000, nstep=10000)
+function benchmark(; n=2000, nstep=10000,
+        treeverse_δs = [5, 10, 20, 40, 80, 160],
+        bennett_ks = [5, 10, 20, 40, 80, 160],
+        device=0,
+    )
+    CUDA.device!(device)
     run_paper_example(nx=n, ny=n, nstep=nstep, method=:treeverse, treeverse_δ=50, usecuda=true)
     run_paper_example(nx=n, ny=n, nstep=nstep, method=:bennett, bennett_k=50, usecuda=true)
-    treeverse_δs = [5]#, 10, 20, 40, 80, 160]
     res1 = zeros(4, length(treeverse_δs))
     for (i, treeverse_δ) in enumerate(treeverse_δs)
         _, _, log, t = run_paper_example(nx=n, ny=n, nstep=nstep, method=:treeverse, treeverse_δ=treeverse_δ, usecuda=true)
@@ -285,7 +289,6 @@ function benchmark(; n=2000, nstep=10000)
     output_file1 = TreeverseAndBennett.project_relative_path("data", "cuda-gradient-treeverse.dat")
     writedlm(output_file1, res1)
 
-    bennett_ks = [5]#, 10, 20, 40, 80, 160]
     res2 = zeros(4, length(bennett_ks))
     for (i,bennett_k) in enumerate(bennett_ks)
         _, _, log, t = run_paper_example(nx=n, ny=n, nstep=nstep, method=:bennett, bennett_k=bennett_k, usecuda=true)
