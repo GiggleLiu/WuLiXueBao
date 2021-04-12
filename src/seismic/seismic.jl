@@ -4,6 +4,8 @@ using NiLang.AD
 using KernelAbstractions
 using ReversibleSeismic
 using KernelAbstractions.CUDA
+using ..TreeverseAndBennett
+using DelimitedFiles
 
 export generate_animation, three_layer, getgrad_three_layer, targetpulses_three_layer, loss_three_layer
 
@@ -193,8 +195,8 @@ function getgrad_three_layer(; nx=201, ny=201, c0=3300^2*ones(nx+2, ny+2), nstep
     rc = Ricker(param, 30.0, 200.0, 1e6)
  	srci = nx ÷ 2
  	srcj = ny ÷ 5
-    res, g = _getgrad(c0, param, srci, srcj, rc, target_pulses, detector_locs, method, treeverse_δ, bennett_k, usecuda)
-    target_pulses, res, g
+    res, g, log = _getgrad(c0, param, srci, srcj, rc, target_pulses, detector_locs, method, treeverse_δ, bennett_k, usecuda)
+    res, g, log
 end
 
 # loss is |u[:,40,:]-ut[:,40,:]|^2
@@ -218,7 +220,7 @@ function _getgrad(c, param, srci, srcj, srcv, target_pulses, detector_locs, meth
             param=param, c=c, srci=srci, srcj=srcj,
             srcv=srcv, δ=treeverse_δ, logger=logger)
         println(logger)
-        return res.data[1], (g_tv_x.data[2].u, g_tv_srcv, g_tv_c)
+        return res.data[1], (g_tv_x.data[2].u, g_tv_srcv, g_tv_c), logger
     elseif method == :bennett
         s0 = SeismicState(Float64, nx, ny)
         if usecuda
@@ -237,7 +239,7 @@ function _getgrad(c, param, srci, srcj, srcv, target_pulses, detector_locs, meth
         _,gx,_,_,_,gsrcv,gc = grad.(gargs) #NiLang.AD.gradient(i_loss_bennett_detector!, (0.0, state, param, srci, srcj, srcv, c, target_pulses, detector_locs); iloss=1, k=bennett_k, logger=logger)
         CUDA.allowscalar(false)
         println(logger)
-        return loss, (gx[1].data[2].u, gsrcv, gc)
+        return loss, (gx[1].data[2].u, gsrcv, gc), logger
     else
         error("")
     end
@@ -260,5 +262,41 @@ function train_three_layer(; nx=201, ny=201, nstep=1000, usecuda=false, method=:
     return opt.minimizer
 end
 =#
+
+"""
+returns the `target_pulses`
+"""
+function run_paper_example(; nx=1000, ny=1000, nstep=10000, method=:treeverse, treeverse_δ=50, bennett_k=50, usecuda=false)
+    detector_locs, target_pulses = targetpulses_three_layer(; nx=nx, ny=ny, c=get_layers(nx, ny), nstep=nstep)
+    c0 = 3300^2*(ones(nx+2, ny+2))
+    t = @elapsed loss, (gx, gsrcv, gc), log = getgrad_three_layer(; nx=nx, ny=ny, c0=c0, nstep=nstep, target_pulses=target_pulses, detector_locs=detector_locs,
+         method=method, treeverse_δ=treeverse_δ, bennett_k=bennett_k, usecuda=usecuda)
+    return loss, gc, log, t
+end
+
+function benchmark(; n=2000, nstep=10000)
+    run_paper_example(nx=n, ny=n, nstep=nstep, method=:treeverse, treeverse_δ=50, usecuda=true)
+    run_paper_example(nx=n, ny=n, nstep=nstep, method=:bennett, bennett_k=50, usecuda=true)
+    treeverse_δs = [5]#, 10, 20, 40, 80, 160]
+    res1 = zeros(4, length(treeverse_δs))
+    for (i, treeverse_δ) in enumerate(treeverse_δs)
+        _, _, log, t = run_paper_example(nx=n, ny=n, nstep=nstep, method=:treeverse, treeverse_δ=treeverse_δ, usecuda=true)
+        ngcalls = count(x->x.action==:grad, log.actions)
+        nfcalls = count(x->x.action==:call, log.actions) + ngcalls
+        res1[:,i] .= log.peak_mem[], t, nfcalls, ngcalls
+    end
+    output_file1 = TreeverseAndBennett.project_relative_path("data", "cuda-gradient-treeverse.dat")
+    writedlm(output_file1, res1)
+
+    bennett_ks = [5]#, 10, 20, 40, 80, 160]
+    res2 = zeros(4, length(bennett_ks))
+    for (i,bennett_k) in enumerate(bennett_ks)
+        _, _, log, t = run_paper_example(nx=n, ny=n, nstep=nstep, method=:bennett, bennett_k=bennett_k, usecuda=true)
+        nfcalls = ngcalls = length(log.fcalls) ÷ 2
+        res2[:,i] .= log.peak_mem[], t, nfcalls, ngcalls
+    end
+    output_file2 = TreeverseAndBennett.project_relative_path("data", "cuda-gradient-bennett.dat")
+    writedlm(output_file2, res2)
+end
 
 end

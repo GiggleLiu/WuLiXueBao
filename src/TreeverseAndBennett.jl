@@ -11,6 +11,8 @@ export treeverse, bennett, treeverse!, bennett!, Lorenz, TreeverseLog, BennettLo
     Glued, RK4, ODESolve, ODEStep, i_ODEStep, i_ODESolve, ODELog,
     checkpointed_neuralode, Seismic
 
+project_relative_path(xs...) = normpath(joinpath(dirname(dirname(pathof(@__MODULE__))), xs...))
+
 include("run_benchmarks.jl")
 include("viz_bennett_treeverse.jl")
 include("viz_pebble.jl")
