@@ -2,8 +2,9 @@ module Seismic
 using NiLang, Plots
 using NiLang.AD
 using KernelAbstractions
+using CUDAKernels
+using CUDA
 using ReversibleSeismic
-using KernelAbstractions.CUDA
 using ..TreeverseAndBennett
 using DelimitedFiles
 
@@ -19,7 +20,7 @@ end
 
 @i function i_loss_bennett!(out, state, param, srci, srcj, srcv, c; k, logger=NiLang.BennettLog())
     bennett!((@const bennett_step!), state, k, 1, (@const param.NSTEP-1), param, srci, srcj, srcv, c; do_uncomputing=false, logger=logger)
-    out -= state[param.NSTEP].u[size(c,1)÷2,size(c,2)÷2+20]
+    out -= state[param.NSTEP].u[ReversibleSeismic.SafeIndex(size(c,1)÷2,size(c,2)÷2+20)]
 end
 
 function loss(param, srci, srcj, srcv::AbstractVector{T}, c::AbstractMatrix{T}) where T
@@ -116,9 +117,7 @@ function getgrad(c::AbstractMatrix{T}; nstep::Int, method=:nilang, treeverse_δ=
         end
         logger = NiLang.BennettLog()
         state = Dict(1=>s0)
-        CUDA.allowscalar(true)
         _,gx,_,_,_,gsrcv,gc = NiLang.AD.gradient(i_loss_bennett!, (0.0, state, param, srci, srcj, srcv, c); iloss=1, k=bennett_k, logger=logger)
-        CUDA.allowscalar(false)
         println(logger)
         return gx[1].u, gsrcv, gc
     else
@@ -232,12 +231,10 @@ function _getgrad(c, param, srci, srcj, srcv, target_pulses, detector_locs, meth
         end
         logger = NiLang.BennettLog()
         state = Dict(1=>Glued(0.0, s0))
-        CUDA.allowscalar(true)
         args = i_loss_bennett_detector!(0.0, state, param, srci, srcj, srcv, c, target_pulses, detector_locs; k=bennett_k, logger=logger)
         loss = args[1]
         gargs = (~i_loss_bennett_detector!)(GVar(loss, 1.0), GVar.(args[2:end])...; k=bennett_k, logger=logger)
         _,gx,_,_,_,gsrcv,gc = grad.(gargs) #NiLang.AD.gradient(i_loss_bennett_detector!, (0.0, state, param, srci, srcj, srcv, c, target_pulses, detector_locs); iloss=1, k=bennett_k, logger=logger)
-        CUDA.allowscalar(false)
         println(logger)
         return loss, (gx[1].data[2].u, gsrcv, gc), logger
     else
