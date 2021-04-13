@@ -24,3 +24,4 @@ output/
 *.xdv
 _local/
 *.swp
+Manifest.toml
