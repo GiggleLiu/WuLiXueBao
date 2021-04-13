@@ -150,4 +150,18 @@ class PLT(object):
             plt.legend()
             plt.tight_layout()
 
+    def fig5(self, tp="pdf"):
+        fname1="../data/cuda-gradient-bennett.dat"
+        fname2="../data/cuda-gradient-treeverse.dat"
+        with DataPlt(filename="fig5.%s"%tp, figsize=(6,4)) as dp:
+            mg1 = np.loadtxt(fname1)
+            mg2 = np.loadtxt(fname2)
+            plt.plot(mg1, marker="o", label="bennett")
+            plt.plot(mg2, marker="o", label="treeverse")
+            plt.xlabel(r"peak memory")
+            plt.ylabel(r"time")
+            plt.legend()
+            plt.tight_layout()
+
+ 
 fire.Fire(PLT())
