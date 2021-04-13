@@ -272,7 +272,7 @@ function run_paper_example(; nx=1000, ny=1000, nstep=10000, method=:treeverse, t
 end
 
 function benchmark_treeverse(; n=1000, nstep=10000,
-        treeverse_δs = [5, 10, 20, 40, 80, 160],
+        treeverse_δs = [5, 10, 20, 40, 80, 160, 320],
         device=0,
     )
     CUDA.device!(device)
