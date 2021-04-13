@@ -306,7 +306,8 @@ function benchmark_bennett(; n=1000, nstep=10000,
     writedlm(output_file2, res2)
 end
 
-function step_benchmarker(; n=1000, usecuda=true)
+function step_benchmarker(; n=1000, usecuda=true, device=0)
+    CUDA.device!(device)
     nx = ny = n
     nstep = 10000
     param = AcousticPropagatorParams(nx=nx, ny=ny, 
