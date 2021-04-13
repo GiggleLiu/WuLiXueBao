@@ -306,4 +306,46 @@ function benchmark_bennett(; n=1000, nstep=10000,
     writedlm(output_file2, res2)
 end
 
+function step_benchmarker(; n=1000, usecuda=true)
+    nx = ny = n
+    nstep = 10000
+    param = AcousticPropagatorParams(nx=nx, ny=ny, 
+            nstep=nstep, dt=0.1/nstep,  dx=200/(nx-1), dy=200/(nx-1),
+            Rcoef = 1e-8)
+    srcv = Ricker(param, 30.0, 200.0, 1e6)
+ 	srci = nx ÷ 2
+ 	srcj = ny ÷ 5
+    c = ones(nx+2, ny+2)
+    u = zero(c)
+    upre = zero(c)
+    unext = zero(c)
+    φ = zero(c)
+    ψ = zero(c)
+    x = SeismicState(Float64, nx, ny)
+    g = SeismicState(Float64, nx, ny)
+    x.step[] += 2
+    g.step[] += 3
+    src = deepcopy(x)
+    dest = deepcopy(x)
+    x_ = Glued(0.0, x)
+    g_ = Glued(0.0, g)
+    _src = Glued(0.0, src)
+    _dest = Glued(0.0, dest)
+    detector_locs = [CartesianIndex((rand(1:nx+2), rand(1:ny+2))) for i=1:200]
+    target_pulses = randn(200, 100)
+    _Gdest, _Gsrc, Gsrcv, Gc, Gtarget_pulses = GVar.((_dest, _src, srcv, c, target_pulses))
+    _gdest, _gsrc, gsrcv, gc, gtarget_pulses = copy.((_dest, _src, srcv, c, target_pulses))
+    gcache = ReversibleSeismic.GradientCache(GVar(src), GVar(src), GVar(c), GVar(srcv), GVar(target_pulses))
+    if usecuda
+        _gdest, _gsrc, gsrcv, gc, gtarget_pulses, detector_locs, target_pulses, x_, g_, u, upre, unext, param, φ, ψ = 
+            togpu.((_gdest, _gsrc, gsrcv, gc, gtarget_pulses, detector_locs, target_pulses, x_, g_, u, upre, unext, param, φ, ψ))
+    end
+    return [
+        "treeverse-step" => ()->(g_.data[2].step[]=2; ReversibleSeismic.treeverse_grad_detector(x_, g_, param, srci, srcj, srcv, gsrcv, c, gc, target_pulses, detector_locs, gcache)),
+        "Julia" => ()->ReversibleSeismic.one_step!(param, unext, u, upre, φ, ψ, param.Σx, param.Σy, c),
+        "Nilang" => ()->(_dest.data[2].step[]=0; _src.data[2].step[] = 2; ReversibleSeismic.bennett_step_detector!(_dest, _src, param, srci, srcj, srcv, c, target_pulses, detector_locs)),
+        "Nilang.AD" => ()->(_Gsrc.data[2].step[]=2; _Gdest.data[2].step[]=0; ReversibleSeismic.bennett_step_detector!(_Gdest, _Gsrc, param, srci, srcj, Gsrcv, Gc, Gtarget_pulses, detector_locs))
+    ]
+end
+
 end

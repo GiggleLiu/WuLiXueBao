@@ -156,10 +156,17 @@ class PLT(object):
         with DataPlt(filename="fig5.%s"%tp, figsize=(6,4)) as dp:
             mg1 = np.loadtxt(fname1)
             mg2 = np.loadtxt(fname2)
-            plt.plot(mg1, marker="o", label="bennett")
-            plt.plot(mg2, marker="o", label="treeverse")
+            plt.plot(mg1[0,:], mg1[1,:], marker="o", label="bennett")
+            plt.plot(mg2[0,:], mg2[1,:], marker="x", label="treeverse + NiLang")
+            plt.ylim([0, 2000])
+            plt.xlim([5, 300])
+            for (x, y, t) in zip(mg1[0,:], mg1[1,:], mg1[2,:]):
+                plt.annotate(int(t), (x, y), va="bottom", ha="center")
+            for (x, y, t) in zip(mg2[0,:], mg2[1,:], mg2[2,:]):
+                plt.annotate(int(t), (x, y), va="bottom", ha="center")
             plt.xlabel(r"peak memory")
-            plt.ylabel(r"time")
+            plt.ylabel(r"time/s")
+            plt.xscale("log")
             plt.legend()
             plt.tight_layout()
 
