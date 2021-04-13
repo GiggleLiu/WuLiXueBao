@@ -1,8 +1,6 @@
 module Seismic
 using NiLang, Plots
 using NiLang.AD
-using KernelAbstractions
-using CUDAKernels
 using CUDA
 CUDA.allowscalar(false)
 using ReversibleSeismic
