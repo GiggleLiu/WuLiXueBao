@@ -23,8 +23,6 @@ function isinstalled(target)
     return false
 end
 
-if isinstalled("KernelAbstractions")
-    @testset "cuda" begin
-        include("cuda.jl")
-    end
+@testset "cuda" begin
+    include("cuda.jl")
 end
