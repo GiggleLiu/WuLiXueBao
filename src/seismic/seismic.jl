@@ -341,10 +341,10 @@ function step_benchmarker(; n=1000, usecuda=true)
             togpu.((_gdest, _gsrc, gsrcv, gc, gtarget_pulses, detector_locs, target_pulses, x_, g_, u, upre, unext, param, φ, ψ))
     end
     return [
-        "treeverse-step" => ()->(g_.data[2].step[]=2; CUDA.@sync(ReversibleSeismic.treeverse_grad_detector(x_, g_, param, srci, srcj, srcv, gsrcv, c, gc, target_pulses, detector_locs, gcache)),
+        "treeverse-step" => ()->(g_.data[2].step[]=2; CUDA.@sync(ReversibleSeismic.treeverse_grad_detector(x_, g_, param, srci, srcj, srcv, gsrcv, c, gc, target_pulses, detector_locs, gcache))),
         "Julia" => ()->CUDA.@sync(ReversibleSeismic.one_step!(param, unext, u, upre, φ, ψ, param.Σx, param.Σy, c)),
-        "Nilang" => ()->(_dest.data[2].step[]=0; _src.data[2].step[] = 2; CUDA.@sync(ReversibleSeismic.bennett_step_detector!(_dest, _src, param, srci, srcj, srcv, c, target_pulses, detector_locs)),
-        "Nilang.AD" => ()->(_Gsrc.data[2].step[]=2; _Gdest.data[2].step[]=0; CUDA.@sync(ReversibleSeismic.bennett_step_detector!(_Gdest, _Gsrc, param, srci, srcj, Gsrcv, Gc, Gtarget_pulses, detector_locs))
+        "Nilang" => ()->(_dest.data[2].step[]=0; _src.data[2].step[] = 2; CUDA.@sync(ReversibleSeismic.bennett_step_detector!(_dest, _src, param, srci, srcj, srcv, c, target_pulses, detector_locs))),
+        "Nilang.AD" => ()->(_Gsrc.data[2].step[]=2; _Gdest.data[2].step[]=0; CUDA.@sync(ReversibleSeismic.bennett_step_detector!(_Gdest, _Gsrc, param, srci, srcj, Gsrcv, Gc, Gtarget_pulses, detector_locs)))
     ]
 end
 
