@@ -271,16 +271,15 @@ function run_paper_example(; nx=1000, ny=1000, nstep=10000, method=:treeverse, t
     return loss, gc, log, t
 end
 
-function benchmark(; n=2000, nstep=10000,
+function benchmark_treeverse(; n=1000, nstep=10000,
         treeverse_δs = [5, 10, 20, 40, 80, 160],
-        bennett_ks = [5, 10, 20, 40, 80, 160],
         device=0,
     )
     CUDA.device!(device)
     run_paper_example(nx=n, ny=n, nstep=nstep, method=:treeverse, treeverse_δ=50, usecuda=true)
-    run_paper_example(nx=n, ny=n, nstep=nstep, method=:bennett, bennett_k=50, usecuda=true)
     res1 = zeros(4, length(treeverse_δs))
     for (i, treeverse_δ) in enumerate(treeverse_δs)
+        println("case $i: δ = $treeverse_δ")
         _, _, log, t = run_paper_example(nx=n, ny=n, nstep=nstep, method=:treeverse, treeverse_δ=treeverse_δ, usecuda=true)
         ngcalls = count(x->x.action==:grad, log.actions)
         nfcalls = count(x->x.action==:call, log.actions) + ngcalls
@@ -288,9 +287,17 @@ function benchmark(; n=2000, nstep=10000,
     end
     output_file1 = TreeverseAndBennett.project_relative_path("data", "cuda-gradient-treeverse.dat")
     writedlm(output_file1, res1)
+end
 
+function benchmark_bennett(; n=1000, nstep=10000,
+        bennett_ks = [5, 10, 20, 40, 80, 160],
+        device=0,
+    )
+    CUDA.device!(device)
+    run_paper_example(nx=n, ny=n, nstep=nstep, method=:bennett, bennett_k=50, usecuda=true)
     res2 = zeros(4, length(bennett_ks))
     for (i,bennett_k) in enumerate(bennett_ks)
+        println("case $i: k = $bennett_k")
         _, _, log, t = run_paper_example(nx=n, ny=n, nstep=nstep, method=:bennett, bennett_k=bennett_k, usecuda=true)
         nfcalls = ngcalls = length(log.fcalls) ÷ 2
         res2[:,i] .= log.peak_mem[], t, nfcalls, ngcalls
