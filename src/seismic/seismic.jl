@@ -4,6 +4,7 @@ using NiLang.AD
 using KernelAbstractions
 using CUDAKernels
 using CUDA
+CUDA.allowscalar(false)
 using ReversibleSeismic
 using ..TreeverseAndBennett
 using DelimitedFiles
@@ -327,19 +328,19 @@ function step_benchmarker(; n=1000, usecuda=true)
     g.step[] += 3
     src = deepcopy(x)
     dest = deepcopy(x)
+    detector_locs = [CartesianIndex((rand(1:nx+2), rand(1:ny+2))) for i=1:200]
+    target_pulses = randn(200, 100)
+    if usecuda
+        detector_locs, target_pulses, x, g, u, upre, unext, param, φ, ψ, c, src, dest = 
+            togpu.((detector_locs, target_pulses, x, g, u, upre, unext, param, φ, ψ, c, src, dest))
     x_ = Glued(0.0, x)
     g_ = Glued(0.0, g)
     _src = Glued(0.0, src)
     _dest = Glued(0.0, dest)
-    detector_locs = [CartesianIndex((rand(1:nx+2), rand(1:ny+2))) for i=1:200]
-    target_pulses = randn(200, 100)
     _Gdest, _Gsrc, Gsrcv, Gc, Gtarget_pulses = GVar.((_dest, _src, srcv, c, target_pulses))
     _gdest, _gsrc, gsrcv, gc, gtarget_pulses = copy.((_dest, _src, srcv, c, target_pulses))
-    gcache = ReversibleSeismic.GradientCache(GVar(src), GVar(src), GVar(c), GVar(srcv), GVar(target_pulses))
-    if usecuda
-        _gdest, _gsrc, gsrcv, gc, gtarget_pulses, detector_locs, target_pulses, x_, g_, u, upre, unext, param, φ, ψ = 
-            togpu.((_gdest, _gsrc, gsrcv, gc, gtarget_pulses, detector_locs, target_pulses, x_, g_, u, upre, unext, param, φ, ψ))
     end
+    gcache = ReversibleSeismic.GradientCache(GVar(src), GVar(src), GVar(c), GVar(srcv), GVar(target_pulses))
     return [
         "treeverse-step" => ()->(g_.data[2].step[]=2; CUDA.@sync(ReversibleSeismic.treeverse_grad_detector(x_, g_, param, srci, srcj, srcv, gsrcv, c, gc, target_pulses, detector_locs, gcache))),
         "Julia" => ()->CUDA.@sync(ReversibleSeismic.one_step!(param, unext, u, upre, φ, ψ, param.Σx, param.Σy, c)),
