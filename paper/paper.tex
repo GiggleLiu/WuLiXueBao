@@ -90,13 +90,14 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
 
 本文回顾并探讨自动微分重要应用之一，对物理模拟过程的自动微分。更具体的说是对电磁学，海洋学~\cite{Heimbach2005}和地震学~\cite{Symes2007,Zhu2020}等问题中最核心的微分方程求解过程的自动微分。
 这些微分方程的常见的求解方法是将问题的空间部分网格化，从而转换为对时间的常微分方程。
-很多现有的包括Jax, PyTorch在内的面向机器学习的自动微分框架中处理后向自动微分对于处理这类问题是棘手的。
-因为这些框架需要存储程序每一步计算的信息以便在后向传播过程中取出用于回传梯度。
+这对包括Jax, PyTorch在内的面向机器学习的自动微分框架造成了挑战。
+这些框架需要存储程序每一步计算的中间结果以便在后向传播过程中取出用于回传梯度。
 这对本身内存空间消耗巨大，且计算步骤数很多的物理模拟过程的积分来说并不实际。
 之所以说空间开销巨大，是因为要模拟的足够精细，空间网格必须要非常稠密，而步骤数多是为了让对时间的常微分更加准确而要求积分步长足够小。
-一种传统的解决自动微分对空间的需求的方案叫做共轭态法~\cite{Plessix2006,Chen2018}，它假设了在较短时间内积分器可逆，并通过逆向积分来帮助自动微分回溯状态。
+一种传统的解决常微分方程求导的方案叫做共轭态法~\cite{Plessix2006,Chen2018}，它假设了在较短时间内积分器可逆，并通过逆向积分来帮助自动微分回溯状态。
 事实上，除了Leap frog等少数积分器在时间反演不变的哈密顿量问题中可以做到时间反演对称，大多数的积分器并不能保证严格可逆，所以共轭态法往往存在由积分步长带来的系统性误差。
-后来，有人把机器学习中的最优检查点算法带入到了物理模拟的状态回溯中~\cite{Symes2007}，仅在对数的额外时间和空间开销下避免了系统误差。而本文作者也发现与此类似的可逆计算~\cite{}中的Bennett算法也可以用于用利用较少的空间回溯中间状态。本文将会介绍共轭态方法，前向自动微分以及基于最优检查点算法和可逆计算的后向自动微分在处理物理模拟问题中的应用，以及不同方法的优劣。
+后来，有人把机器学习中的最优检查点算法带入到了物理模拟的状态回溯中~\cite{Symes2007}，仅在对数的额外时间和空间开销下避免了系统误差。但是Treeverse算法也有无法微分GPU设备函数的缺点，而基于可逆计算的自动微分可以补足步者缺点。
+
 
 %那物理学家们是否只需要奉行“拿来主义”，仅阅读机器学习库的文档，就可以很好的驾驭自动微分呢？
 %并不完全是的，当大家谈论自动微分的时候有“狭义”和“广义”之分，而主流机器学习库仅涵盖了前者。
@@ -106,8 +107,8 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
 %还有些时候手动定义的导数可能会出错，尤其是将定义在实数上的规则拓展到复数域的时候。比如奇异值分解函数的求导规则直到2019年，才有人意识到复数的求导规则中有一个规范不变性带来的一项被忽略了~\cite{Wan2019}。
 %而广义的自动微分没有这些问题，它微分规则定义在标量的最基础的运算之上，这些基础运算有限而且很难出错。但它在张量运算中的性能却不尽如人意。
 %一个很好的描述它与狭义自动微分区别的例子是，当将两个复数相加，广义的自动微分看到的是实部相加和虚部相加这两个操作，而狭义自动微分则需要推导适用于复变函数的Wirtinger导数~\cite{Hirose2003}。
-
-章节\ref{sec:forwardbackward}~ 介绍了共轭态法和自动微分的基本原理。
+   本文将会介绍共轭态方法，前向自动微分以及基于最优检查点算法和可逆计算的后向自动微分等自动微分方法在处理物理模拟问题中的应用，对比不同方法的优劣以及适用的场景。
+章节\ref{sec:forwardbackward}~ 介绍了几种自动微分方法的基本原理。
 章节\ref{sec:timespace}~ 介绍了基于检查点和可逆编程的两种后向自动微分的基础理论，尤其两者如何权衡程序的运行时间和空间。
 章节\ref{sec:applications}~ 介绍了不同自动微分技术在地震波模拟过程中的应用。
 
@@ -126,7 +127,7 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
 \end{align}
 其中$s_i$为完成第$i$步积分后的状态。
 最后我们还会定义一个损失函数$\mathcal{L} = {\rm loss}(s_n)$。
-    自动微分的目标则是求解损失量对参数的导数$\frac{\partial \mathcal{L}}{\partial s_0}$, $\frac{\partial \mathcal{L}}{\partial \theta}$, $\frac{\partial \mathcal{L}}{\partial t_0}$和$\frac{\partial \mathcal{L}}{\partial t_n}$。
+    自动微分的目标则是求解损失量对参数的导数$\frac{\partial \mathcal{L}}{\partial s_0}$和$\frac{\partial \mathcal{L}}{\partial \theta}$。
     %$$s_{i+1} = s_{i} + f(s_i, t, \theta)$$
 
 \subsection{共轭态方法}
@@ -140,17 +141,18 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
     \KwInput{动力学参数$\theta$，开始时间$t_0$，结束时间$t_n$，末态$s_n$，以及需要回传的导数$\frac{\partial \mathcal{L}}{\partial s_n}$}
     \KwResult{$\frac{\partial \mathcal{L}}{\partial s_0}$, $\frac{\partial \mathcal{L}}{\partial \theta}$}
         $\frac{\partial \mathcal{L}}{\partial t_n} = \frac{\partial \mathcal{L}}{\partial s_n}^Tf(s_n,t_n,\theta)$ \Comment*[r]{计算损失函数对终了时间的导数}
-        \Fn{\rm aug\_dynamics(($s$, $a$, -), $t$, $\theta$) \hspace{14em}$\#$ 定义拓展动力学函数}{$s'=f(s, t, \theta)$ \; \textbf{return} ($s'$, $-a^T\frac{\partial s'}{\partial s}$, $-a^T\frac{\partial s'}{\partial \theta}$)}
+        \Fn{\rm aug\_dynamics(($s$, $a$, -), $t$, $\theta$) \hspace{14em}$\#$ 定义拓展动力学函数}{$q=f(s, t, \theta)$ \; \textbf{return} ($q$, $-a^T\frac{\partial q}{\partial s}$, $-a^T\frac{\partial q}{\partial \theta}$)}
         $S_0$ = ($s_n$, $\frac{\partial \mathcal{L}}{\partial s_n}$, $0$) \Comment*[r]{计算拓展动力学函数的初始状态}
         ($s_0$, $\frac{\partial \mathcal{L}}{\partial s_0}$, $\frac{\partial \mathcal{L}}{\partial \theta}$) = ODESolve(aug\_dynamics, $S_0$, $t_n$, $t_0$, $\theta$) \Comment*[r]{对拓展动力学反向积分}
     \caption{共轭态法}\label{alg:adjointstate}
 \end{algorithm}
 
 该算法的描述来自文献~\cite{Chen2018}，其中可以找到详细的推导过程，这里对原算法中的符号做了替换以方便读者理解。
+该方案在积分器严格可逆的时候梯度也严格，而当积分器反向积分误差不可忽略时，则需要额外的处理保证精度，这一点我们会在随后的例子中涉及。
 
 
 \subsection{前向自动微分}
-    顾名思义，前向自动微分是指向前（指与程序运行方向相同）传播导数。
+    顾名思义，前向自动微分是指向前（指与程序运行方向相同）传播导数，它和数学分析中的无穷小量有关。
     \begin{figure}[t]
         \centering
         \includegraphics[width=0.7\columnwidth,trim={0 0cm 0 0},clip]{fig3.pdf}
@@ -177,42 +179,43 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
 \begin{align}
     f(\vec x+ \frac{\D \vec x}{\D p} \D p) = f(\vec x) + \left(\frac{\D f(\vec x)}{\D \vec x}\frac{\D \vec x}{\D p}\right) \D p
 \end{align}
-其中$\vec x$为输入函数$f$的参数的集合，包括$p$本身。$\frac{\D f(\vec x)}{\D \vec x}$为局域雅可比矩阵，
-实际程序实现中，这个局域雅可比矩阵并不需要构造出来。由于任何程序都具有可拆分为基础指令的特点，人们把程序拆解为基础标量指令，并在这些基础指令上实现自动微分的局域变换规则。
-具体来说一个标量会同时记录它的数值和一阶小量的系数$(v, \dot v)$，其中$\dot v = \frac{\D v}{\D p}$，人们通过重新定义它的基本运算规则，如
+其中$\vec x$为输入函数$f$的参数的集合，可以包括$p$本身。$\frac{\D f(\vec x)}{\D \vec x}$为局域雅可比矩阵，前向传播中我们将它与梯度矢量相乘得到新的梯度矢量。
+实际程序实现中，这个局域雅可比矩阵并不需要构造出来，考虑到任何程序都具有可拆分为基础指令的特点，人们把程序拆解为基础标量指令，并在这些基础指令上通过代码变换或者是算符重载的方式实现梯度矢量的变换。
+以标量的乘法为例，变量会同时记录它的数值和一阶小量的系数$(v, \dot v)$，其中$\dot v = \frac{\D v}{\D p}$，人们重新定义它的基本运算规则如下
 $$\texttt{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 使得其在计算同时更新一阶小量的系数。
 简单的运算规则的替换对于人类来说尚可手动，但真实的程序可能会包含数以亿计的这样的基础操作，虽然结果依然是解析的，但是人们很难再通过人力得到具体的导数表达式，而计算机恰恰很擅长这样繁琐但是规则简单的任务。
 如图~\ref{fig:autodifftypes} (a) 所示，在求解常微分方程中，单步前向自动微分可以形式化的表达为
 \begin{align*}
-    {\rm ODEStep}^{\rm F} : \left(\left(s_{i+1}, \frac{\D s_{i+1}}{\D s_0}\right), \left(\theta, \frac{\D s_{i+1}}{\D \theta}\right)\right)
-        \mapsto &\left(\left({\rm ODEStep}\left(s_{i}, t_i, \theta, \Delta t \right), \frac{\partial s_{i+1}}{\partial s_i} \frac{\D s_{i}}{\D s_0}\right)\right., \\
+    {\rm ODEStep}^{\rm F} : \left(\left(s_{i}, \frac{\D s_{i}}{\D s_0}\right), \left(\theta, \frac{\D s_{i}}{\D \theta}\right)\right)
+        \mapsto &\left(\left({\rm ODEStep}\left(f, s_{i}, \theta, t_i, \Delta t \right), \frac{\partial s_{i+1}}{\partial s_i} \frac{\D s_{i}}{\D s_0}\right)\right., \\
         &\left.\left(\theta, \frac{\partial s_{i+1}}{\partial s_i} \frac{\D s_{i}}{\D \theta} + \frac{\partial s_{i+1}}{\partial \theta}\right)\right)
 \end{align*}
-这里为了简洁略去了积分函数和时间等参量。由于状态$s_i, s_{i+1}$和控制参数$\theta$均可包含多个变量，上述偏微分均解释为雅可比行列式。
-真实的程序计算中，仅通过基本运算的代码替换或者算符重载即可实现该变换。
+这里为了简洁略去了积分函数和时间等常数参量。由于状态$s_i, s_{i+1}$和控制参数$\theta$均可包含多个变量，上述偏微分均解释为雅可比行列式。
+%真实的程序计算中，仅通过基本运算的代码替换或者算符重载即可实现该变换。
 %因为一些如\texttt{ForwardDiff}这样优秀的前向自动微分库，我们并不需要手动实现这些链式法则以及基础微分规则。
-这里还有一个与计算时间有关的要素，那就是一次对多少个变量求导。如果同时更行整个雅可比行列式，计算空间随着求导变量数目线性增加。
+一般前向自动微分只对一个或者若干个变量求导，如果要一次对多个变量求导，计算空间也随着求导变量数目线性增加。
 %图~\ref{fig:autodifftypes} (a)所示的是对函数$y=z *\sin(x)$的前向自动微分，这个函数仅仅包含两步运算$\sin$与$*$。程序中每个变量都记录了三个域，分别是\texttt{(变量本身, $\epsilon^x$的系数, $\epsilon^z$的系数)}，每当经过一个函数便同时更新数值和两个无穷小量的系数，因此整个函数的运行空间和一次求导的变量的个数也成正比。
-在实践中，在内存大小有限且需要求导变量较多的情况下，一般是重复运行多次计算过程，一次只处理若干个变量的导数这样分批次求导。无论是哪种情况，求导时间都会随着需求导的变量的数目线性增长，这是限制前向自动微分应用场景的最主要因素。
+%在实践中，在内存大小有限且需要求导变量较多的情况下，一般是重复运行多次计算过程，一次只处理若干个变量的导数这样分批次求导。
+无论是一次求导多少个变量，前向自动微分求导的时间都会随着需求导的变量的数目线性增长，这是限制前向自动微分应用场景的最主要因素。
 
 \subsection{后向自动微分}
-后向自动微分与前向自动微分梯度传播方向相反，它解决了前向自动微分中计算开销随着需要求导的变量数目线性增长的问题。后向自动微分包括前向计算和梯度后向传播两个过程。前向计算过程中，程序进行普通的计算，最后计算得到一个标量为损失$\mathcal{L}$。
+后向自动微分与前向自动微分梯度传播方向相反，它解决了前向自动微分中计算开销随着需要求导的变量数目线性增长的问题。后向自动微分包括正向计算和梯度后向传播两个过程。正向计算过程中，程序进行普通的计算并获取所需的运行时信息，最后计算得到一个标量为损失$\mathcal{L}$。
 梯度回传的过程是计算导数的过程，可表示为更新一个变量的对偶量的过程$\overline{v} = \frac{\partial \mathcal{L}}{\partial v}$。从$\overline{\mathcal L} = 1$出发，
 梯度回传即应用如下链式法则
-%前向计算过程中除了运算本身，还会将部分运算的中间结果通过\texttt{push($\Sigma$, x)}操作压栈将一个变量\texttt{x}其放入一个全局堆栈$\Sigma$中，
+%正向计算过程中除了运算本身，还会将部分运算的中间结果通过\texttt{push($\Sigma$, x)}操作压栈将一个变量\texttt{x}其放入一个全局堆栈$\Sigma$中，
 %而后向过程将这些缓存的结果通过\texttt{x = pop($\Sigma$)}操作出栈并利用如下递推公式计算导数
 \begin{align*}
     \frac{\D \mathcal{L}}{\D x} &= \sum_y\frac{\partial \mathcal{L}}{\partial y}\frac{\partial y}{\partial x}
 \end{align*}
-为了实现该链式法则，人们对于一类基础函数$y=f(x)$定义了对偶量的局域运算规则
+为了实现该链式法则，人们对于一类原子函数$y=f_p(x)$定义了对偶量的局域运算规则
 \begin{align*}
-    \overline f: \overline x \mapsto \overline x + \overline y\frac{\partial y}{\partial x}
+    \overline f_p: (\overline x, \overline y) \mapsto (\overline x + \overline y\frac{\partial y}{\partial x}, \overline y)
 \end{align*}
 
 其中，$\frac{\partial y}{\partial x}$为局域雅可比矩阵，它的数值不需要具体计算出来，
 而是以函数的形式，连同所需的中间变量一起存放在栈中，并在后向传播中按照后进先出的顺序调用。
-所有由这一类基础函数构成的代码便可以利用上述导数回传规则更新对偶量。
+所有由这一类原子函数$f_p$构成的代码便可以利用上述导数回传规则更新对偶量。
 具体到求解常微分方程的自动微分过程中，其反向传播过程如图~\ref{fig:autodifftypes} (b) 所示，可以形式化的表达为
 
 %\begin{minipage}{0.45\textwidth}
@@ -229,50 +232,50 @@ $$\texttt{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
     ,\overline{\theta} + \overline{s_{i+1}}\frac{\partial s_{i+1}}{\partial \theta}\right)%\right)
 \end{align*}
 %\end{minipage}
-这里也同样略却了积分函数和时间等参量。考虑到该后向传播过程需要知道函数的输入，整个前向计算（左侧）和后向梯度传播（右侧）可表达为
+这里也同样略去了积分函数和时间等参量。考虑到该后向传播过程需要知道函数的输入，整个前向计算（左侧）和后向梯度传播（右侧）可表达为
 
 \begin{minipage}{0.45\textwidth}
 \begin{align*}
-    &\ldots\\
+    &\text{\# 正向计算（单步）}\\
     &\texttt{push}(\Sigma, s_i)\\
-    &s_{i+1} = {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t)\\
-    &\ldots
+    &s_{i+1} = {\rm ODEStep}(f, s_{i}, \theta, t_i, \Delta t)\\
 \end{align*}
 \end{minipage}
 \begin{minipage}{0.45\textwidth}
 \begin{align*}
-    &\ldots\\
+    &\text{\# 反向传播（单步）}\\
     &s_{i} = \texttt{pop}(\Sigma)\\
-    &(\overline{s_i}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+1}}, \overline{\theta},s_i)
-    &\ldots
+    &(\overline{s_i}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+1}}, \overline{\theta},s_i)\\
 \end{align*}
 \end{minipage}
 
-前向计算过程中除了运算本身，还会将部分运算的中间结果通过入栈操作\texttt{push($\Sigma$,$s_i$)}将状态$s_i$的值放入一个全局堆栈$\Sigma$中，而后向过程将这些缓存的结果通过出栈操作\texttt{x = pop($\Sigma$)}取出$s_i$的值并利用后向传播规则更新$\overline s_i$和$\overline \theta$。
+正向计算过程中除了运算本身，还会将部分运算的中间结果通过入栈操作\texttt{push($\Sigma$,$s_i$)}将状态$s_i$的值放入一个全局堆栈$\Sigma$中，而后向过程将这些缓存的结果通过出栈操作\texttt{$s_i$ = pop($\Sigma$)}取出$s_i$的值并利用后向传播规则更新$\overline s_i$和$\overline \theta$。
 %导数回传的计算复杂度与需要求导的变量数目无关，因此它在求导$\sim 10^2$以上的输入变量的优化问题中对比前向自动微分拥有优势，这也是为什么所有的主流自动微分框架都采用梯度后向传播的模式。
 %后向自动微分也有缺点，那就是向堆栈中存储数据带来了正比于计算步骤数 ($\bigO(T)$)的额外空间开销以及频繁访问内存带来的性能下降的问题，这是后向自动微分框架设计的复杂性的来源。
 虽然导数回传的计算复杂度与需要求导的变量数目无关，但后向自动微分向堆栈中存储数据带来了正比于计算步骤数 (i.e. $\bigO(T)$)的额外空间开销。
-如何设计算法在保证对计算状态逆序的访问的前提下，减少计算中使用的堆栈$\Sigma$的大小，是我们在章节~\ref{sec:timespace}中要讨论的一个至关重要的问题。
+如何设计算法在保证对计算状态逆序的访问的前提下，减少计算中使用的堆栈$\Sigma$的大小，是反向传播复杂性的来源，也被叫做“时间与空间的权衡”问题。我们在章节~\ref{sec:timespace}中讨论这个问题。
 
 \section{时间与空间的权衡}\label{sec:timespace}
 \subsection{重计算与反计算}
-在反向自动微分中，比起将每一步的计算状态保存到堆栈，有时候我们也可以通过“重计算”的方式来得到一部分中间状态。
+一种避免每一步都将计算状态保存到堆栈的方式是重计算，即从已知状态出发，通过重新计算未缓存的结果。如下例子通过重计算省去缓存$s_{i+1}$
 
 \begin{minipage}{0.45\textwidth}
 \begin{align*}
+    &\text{\# 正向计算}\\
     &\texttt{push}(\Sigma, s_i)\\
-    &s_{i+1} = {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t)\\
-    &s_{i+2} = {\rm ODEStep}(s_{i+1}, t_i, \theta, \Delta t)\\
+    &s_{i+1} = {\rm ODEStep}(f, s_{i}, \theta, t_i, \Delta t)\\
+    &s_{i+2} = {\rm ODEStep}(f, s_{i+1}, \theta, t_i, \Delta t)\\
     &\texttt{push}(\Sigma, s_{i+2})
 \end{align*}
 \end{minipage}
 \begin{minipage}{0.45\textwidth}
 \begin{align*}
+    &\text{\# 反向传播}\\
     &s_{i+2} = \texttt{pop}(\Sigma)\\
     %&\overline{s_{i+2}} = \overline{s_{i+3}}\frac{\partial s_{i+3}}{\partial s_{i+2}}\\
     &(\overline{s_{i+2}}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+3}}, \overline{\theta}, s_{i+2})\\
     &s_{i} = \texttt{read}(\Sigma, \texttt{i})\\
-    &s_{i+1} = {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t)  ~\# ~\text{重计算}\\
+    &s_{i+1} = {\rm ODEStep}(f, s_{i}, \theta, t_i, \Delta t)  ~\# ~\text{重计算}\\
     %&\overline{s_{i+1}} = \overline{s_{i+2}}\frac{\partial s_{i+2}}{\partial s_{i+1}}\\
     &(\overline{s_{i+1}}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+2}}, \overline{\theta}, s_{i+1})\\
     &s_{i} = \texttt{pop}(\Sigma)\\
@@ -292,21 +295,23 @@ $$\texttt{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 
 \begin{minipage}{0.45\textwidth}
 \begin{align*}
+    &\text{\# 正向计算}\\
     &s_{i+1} \leftarrow 0\\
-    &s_{i+1} \mathrel{+}= {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t)\\
+    &s_{i+1} \mathrel{+}= {\rm ODEStep}(f, s_{i}, \theta, t_i, \Delta t)\\
     &s_{i+2} \leftarrow 0\\
-    &s_{i+2} \mathrel{+}= {\rm ODEStep}(s_{i+1}, t_i, \theta, \Delta t)\\
-    &s_{i+1} \mathrel{-}= {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t) ~\#~\text{反计算}\\
+    &s_{i+2} \mathrel{+}= {\rm ODEStep}(f, s_{i+1}, \theta, t_i, \Delta t)\\
+    &s_{i+1} \mathrel{-}= {\rm ODEStep}(f, s_{i}, \theta, t_i, \Delta t) ~\#~\text{反计算}\\
     &s_{i+1} \rightarrow 0 ~\# ~\text{归还}~ s_{i+1}
 \end{align*}
 \end{minipage}
 \begin{minipage}{0.45\textwidth}
 \begin{align*}
+    &\text{\# 反向计算}\\
     &s_{i+1} \leftarrow 0\\
-    &s_{i+1} \mathrel{+}= {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t) ~\# ~\text{计算}~ s_{i+1}\\
-    &s_{i+2} \mathrel{-}= {\rm ODEStep}(s_{i+1}, t_i, \theta, \Delta t)\\
+    &s_{i+1} \mathrel{+}= {\rm ODEStep}(f, s_{i}, \theta, t_i, \Delta t) ~\# ~\text{计算}~ s_{i+1}\\
+    &s_{i+2} \mathrel{-}= {\rm ODEStep}(f, s_{i+1}, \theta, t_i, \Delta t)\\
     &s_{i+2} \rightarrow 0\\
-    &s_{i+1} \mathrel{-}= {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t)\\
+    &s_{i+1} \mathrel{-}= {\rm ODEStep}(f, s_{i}, \theta, t_i, \Delta t)\\
     &s_{i+1} \rightarrow 0
 \end{align*}
 \end{minipage}
@@ -362,10 +367,10 @@ Treeverse算法和Bennett算法分别是源代码后向自动微分（一种通�
             $l = \lceil \frac L k \rceil$\;
             $k' = \lceil \frac L l \rceil$\;
             \For{$j=1,2,...,k'$}{
-                bennett($S$, $k$, $i+(j-1)l$, $\min(\frac L k, L-(j-1)l)$) \Comment*[r]{compute k' sub-blocks}
+                bennett($S$, $k$, $i+(j-1)l$, $\min(\frac L k, L-(j-1)l)$) \Comment*[r]{向前执行 k' 个分块}
             }
             \For{$j=k'-1,k'-2,...,1$}{
-                $\sim$bennett($S$, $k$, $i+\frac{j-1}{k}L$, $\frac L k$) \Comment*[r]{uncompute k'-1 sub-blocks}
+                $\sim$bennett($S$, $k$, $i+\frac{j-1}{k}L$, $\frac L k$) \Comment*[r]{向后执行 k'-1 个分块}
             }
         }
     }
@@ -541,6 +546,11 @@ Perfectly matched layer (PML)方程是模拟波在无限大介质中运动的一
     \caption{对比纯可逆计算的Bennett算法的时间和空间开销和Treeverse算法结合可逆计算的性能，其中图中标记的数字为函数的前向运行次数，在Bennett算法中，后向运行次数和前向运行次数一样，而Treeverse算法中，后向次数固定为$10^4$。\label{fig:seismic}} 
 \end{figure}
 
+图~\ref{fig:seismic}中展示了不同时间空间交换中，实际程序在GPU上运行的时间，这里的理论内存峰值是指不考虑临时内存和常数的辅助空间的需要缓存的状态的大小，这个每个状态的大小为32MB。计算设备为Nvidia Tesla V100。其中Treeverse+NiLang的方案是指用可逆计算处理单步运算的微分，同时用Treeverse算法处理步骤间的微分，它的表现远好于单纯使用可逆计算的方案的Bennett算法。Treeverse+NiLang方案中随着检查点数目的减少，计算时间的减少并不明显。这是因为增加的计算时间是前向计算，而这里单步后向计算梯度的时间是前向时间的二十多倍，因此即使仅用5个检查点，额外的增加的时间也不到一倍。
+这里单步计算梯度的之所比前向计算慢这么多是因为采用了指令级别的可逆计算自动微分，而指令级别的自动微分在并行计算中不允许变量的共享读取以避免程序在后向计算中同时更新它的梯度，因此我们把单步更新分为若干个过程更新。
+在单线程版本的CPU上，前向和后向的单步运算时间差距在四倍以内，此时前向计算时间对于treeverse算法也很重要。
+而纯可逆计算的Bennett算法中，计算梯度的部分随着前向计算的步骤数的增加而增加，因此时间的额外开销和理论模型几乎一致。
+此外，虽然Treeverse算法在可以做到高效的时间和空间的交换，但是却无法直接用于微分GPU的kernel函数，而可逆计算则非常适合这种非线性且具有一定可逆性的程序，避免了手动求导GPU设备函数的麻烦。
 %\vskip 1.55\baselineskip
 %\subsection{热带（Tropical）张量网络求解自旋玻璃最优构型}
 %热带张量网络是张量网络的一个特别的应用，它重新定义了张量中基础元素的代数为
@@ -564,13 +574,27 @@ Perfectly matched layer (PML)方程是模拟波在无限大介质中运动的一
 
 \section*{致谢}
 
-感谢王磊老师的讨论。
+感谢王磊老师的讨论以及计算设备的支持。
 感谢彩云天气CTO苑明理老师的讨论。
 
 
-\section*{附录A1}
+\section*{名词表}
 
-标题排列和编号方式为A1, A2, A3.
+\begin{description}
+    \item[对偶量] adjoint
+    \item[设备函数] device function
+    \item[可逆计算] reversible computing
+    \item[可逆编程] reversible programming
+    \item[鹅卵石游戏] pebble game
+    \item[共轭态法] adjoint state method
+    \item[前向自动微分] forward mode automatic differentiation
+    \item[后向自动微分] reverse mode automatic differentiation
+    \item[地震学] seismic
+    \item[原子函数] primitive function
+    \item[] PML
+\end{description}
+
+
 
 \section*{附录A2}
 %

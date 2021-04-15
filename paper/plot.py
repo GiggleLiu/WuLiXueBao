@@ -5,6 +5,12 @@ from viznet import *
 import numpy as np
 from scipy import optimize, special
 import json
+from matplotlib.font_manager import FontProperties
+from fontTools.ttLib import TTFont
+ChineseFont2 = FontProperties(fname='/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf')
+font = TTFont("/usr/share/fonts/truetype/wqy/wqy-microhei.ttc", fontNumber=0)
+font.save("wqy-microhei.ttc")
+ChineseFont2 = FontProperties(fname='wqy-microhei.ttc')
 
 class PLT(object):
     def fig1(self, tp='pdf'):
@@ -39,8 +45,6 @@ class PLT(object):
             plt.tight_layout()
 
     def fig2(self, tp='pdf'):
-        from matplotlib.font_manager import FontProperties
-        ChineseFont2 = FontProperties(fname='/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf')
         with DataPlt(filename="fig2.%s"%tp, figsize=(7,4)) as dp:
             ax1 = plt.subplot(121)
             errors = np.loadtxt("lorenz/data/errors.dat")
@@ -150,22 +154,24 @@ class PLT(object):
             plt.legend()
             plt.tight_layout()
 
-    def fig5(self, tp="pdf"):
+    def fig5(self, tp="pdf", lang="CN"):
         fname1="../data/cuda-gradient-bennett.dat"
         fname2="../data/cuda-gradient-treeverse.dat"
         with DataPlt(filename="fig5.%s"%tp, figsize=(6,4)) as dp:
             mg1 = np.loadtxt(fname1)
             mg2 = np.loadtxt(fname2)
-            plt.plot(mg1[0,:], mg1[1,:], marker="o", label="bennett")
-            plt.plot(mg2[0,:], mg2[1,:], marker="x", label="treeverse + NiLang")
-            plt.ylim([0, 2000])
-            plt.xlim([5, 300])
-            for (x, y, t) in zip(mg1[0,:], mg1[1,:], mg1[2,:]):
-                plt.annotate(int(t), (x, y), va="bottom", ha="center")
-            for (x, y, t) in zip(mg2[0,:], mg2[1,:], mg2[2,:]):
-                plt.annotate(int(t), (x, y), va="bottom", ha="center")
-            plt.xlabel(r"peak memory")
-            plt.ylabel(r"time/s")
+            mem1 = mg1[0,:]
+            mem2 = mg2[0,:]
+            plt.plot(mem1, mg1[1,:], marker="o", label="Bennett")
+            plt.plot(mem2, mg2[1,:], marker="x", label="Treeverse + NiLang")
+            plt.ylim([0, 1500])
+            plt.xlim([4, 400])
+            for (x, y, t) in zip(mem1, mg1[1,:], mg1[2,:]):
+                plt.annotate(int(t), (x, y+30), va="bottom", ha="center")
+            for (x, y, t) in zip(mem2, mg2[1,:], mg2[2,:]):
+                plt.annotate(int(t), (x, y+30), va="bottom", ha="center")
+            plt.xlabel(r"theorerical peak memory/GB" if lang == "EN" else r"理论内存峰值/32MB", fontproperties = ChineseFont2, fontsize=14)
+            plt.ylabel(r"time/s" if lang == "EN" else r"时间/秒", fontproperties = ChineseFont2, fontsize=14)
             plt.xscale("log")
             plt.legend()
             plt.tight_layout()
