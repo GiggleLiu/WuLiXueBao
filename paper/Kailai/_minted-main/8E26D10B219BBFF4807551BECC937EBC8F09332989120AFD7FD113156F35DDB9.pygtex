@@ -1,0 +1,29 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{k}{function} \PYG{n}{runge\PYGZus{}kutta\PYGZus{}one\PYGZus{}step}\PYG{p}{(}\PYG{n}{f}\PYG{o}{::}\PYG{k+kt}{Function}\PYG{p}{,} \PYG{n}{t}\PYG{o}{::}\PYG{n}{PyObject}\PYG{p}{,} \PYG{n}{y}\PYG{o}{::}\PYG{n}{PyObject}\PYG{p}{,} \PYG{n}{Δt}\PYG{o}{::}\PYG{n}{PyObject}\PYG{p}{,} \PYG{n}{θ}\PYG{o}{::}\PYG{k+kt}{Union}\PYG{p}{\PYGZob{}}\PYG{n}{PyObject}\PYG{p}{,} \PYG{n}{Missing}\PYG{p}{\PYGZcb{})}
+    \PYG{n}{k1} \PYG{o}{=} \PYG{n}{Δt}\PYG{o}{*}\PYG{n}{f}\PYG{p}{(}\PYG{n}{t}\PYG{p}{,} \PYG{n}{y}\PYG{p}{,} \PYG{n}{θ}\PYG{p}{)}
+    \PYG{n}{k2} \PYG{o}{=} \PYG{n}{Δt}\PYG{o}{*}\PYG{n}{f}\PYG{p}{(}\PYG{n}{t}\PYG{o}{+}\PYG{n}{Δt}\PYG{o}{/}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{y}\PYG{o}{+}\PYG{n}{k1}\PYG{o}{/}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{θ}\PYG{p}{)}
+    \PYG{n}{k3} \PYG{o}{=} \PYG{n}{Δt}\PYG{o}{*}\PYG{n}{f}\PYG{p}{(}\PYG{n}{t}\PYG{o}{+}\PYG{n}{Δt}\PYG{o}{/}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{y}\PYG{o}{+}\PYG{n}{k2}\PYG{o}{/}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{θ}\PYG{p}{)}
+    \PYG{n}{k4} \PYG{o}{=} \PYG{n}{Δt}\PYG{o}{*}\PYG{n}{f}\PYG{p}{(}\PYG{n}{t}\PYG{o}{+}\PYG{n}{Δt}\PYG{p}{,} \PYG{n}{y}\PYG{o}{+}\PYG{n}{k3}\PYG{p}{,} \PYG{n}{θ}\PYG{p}{)}
+    \PYG{n}{y} \PYG{o}{=} \PYG{n}{y} \PYG{o}{+} \PYG{n}{k1}\PYG{o}{/}\PYG{l+m+mi}{6} \PYG{o}{+} \PYG{n}{k2}\PYG{o}{/}\PYG{l+m+mi}{3} \PYG{o}{+} \PYG{n}{k3}\PYG{o}{/}\PYG{l+m+mi}{3} \PYG{o}{+} \PYG{n}{k4}\PYG{o}{/}\PYG{l+m+mi}{6}
+\PYG{k}{end}
+
+\PYG{k}{function} \PYG{n}{rk4}\PYG{p}{(}\PYG{n}{f}\PYG{o}{::}\PYG{k+kt}{Function}\PYG{p}{,} \PYG{n}{T}\PYG{o}{::}\PYG{k+kt}{Union}\PYG{p}{\PYGZob{}}\PYG{n}{PyObject}\PYG{p}{,} \PYG{k+kt}{Float64}\PYG{p}{\PYGZcb{},}
+                \PYG{n}{NT}\PYG{o}{::}\PYG{k+kt}{Union}\PYG{p}{\PYGZob{}}\PYG{n}{PyObject}\PYG{p}{,}\PYG{k+kt}{Int64}\PYG{p}{\PYGZcb{},} \PYG{n}{y}\PYG{o}{::}\PYG{k+kt}{Union}\PYG{p}{\PYGZob{}}\PYG{n}{PyObject}\PYG{p}{,} \PYG{k+kt}{Float64}\PYG{p}{,} \PYG{k+kt}{Array}\PYG{p}{\PYGZob{}}\PYG{k+kt}{Float64}\PYG{p}{\PYGZcb{}\PYGZcb{},} \PYG{n}{θ}\PYG{o}{::}\PYG{k+kt}{Union}\PYG{p}{\PYGZob{}}\PYG{n}{PyObject}\PYG{p}{,} \PYG{n}{Missing}\PYG{p}{\PYGZcb{}}\PYG{o}{=}\PYG{n}{missing}\PYG{p}{)}
+    \PYG{n}{one\PYGZus{}step} \PYG{o}{=} \PYG{n}{runge\PYGZus{}kutta\PYGZus{}one\PYGZus{}step}
+
+    \PYG{n}{ta} \PYG{o}{=} \PYG{n}{TensorArray}\PYG{p}{(}\PYG{n}{NT}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{p}{)} \PYG{c}{\PYGZsh{} storing y}
+    \PYG{k}{function} \PYG{n}{condition}\PYG{p}{(}\PYG{n}{i}\PYG{p}{,} \PYG{n}{ta}\PYG{p}{)}
+        \PYG{n}{i} \PYG{o}{\PYGZlt{}=} \PYG{n}{NT}\PYG{o}{+}\PYG{l+m+mi}{1}
+    \PYG{k}{end}
+    \PYG{k}{function} \PYG{n}{body}\PYG{p}{(}\PYG{n}{i}\PYG{p}{,} \PYG{n}{ta}\PYG{p}{)}
+        \PYG{n}{y} \PYG{o}{=} \PYG{n}{read}\PYG{p}{(}\PYG{n}{ta}\PYG{p}{,} \PYG{n}{i}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{)}
+        \PYG{n}{y\PYGZus{}} \PYG{o}{=} \PYG{n}{one\PYGZus{}step}\PYG{p}{(}\PYG{n}{f}\PYG{p}{,} \PYG{p}{(}\PYG{n}{cast}\PYG{p}{(}\PYG{n}{eltype}\PYG{p}{(}\PYG{n}{Δt}\PYG{p}{),} \PYG{n}{i}\PYG{p}{)}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{)}\PYG{o}{*}\PYG{n}{Δt}\PYG{p}{,} \PYG{n}{y}\PYG{p}{,} \PYG{n}{Δt}\PYG{p}{,} \PYG{n}{θ}\PYG{p}{)}
+        \PYG{n}{ta} \PYG{o}{=} \PYG{n}{write}\PYG{p}{(}\PYG{n}{ta}\PYG{p}{,} \PYG{n}{i}\PYG{p}{,} \PYG{n}{y\PYGZus{}}\PYG{p}{)}
+        \PYG{n}{i}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{ta}
+    \PYG{k}{end}
+    \PYG{n}{ta} \PYG{o}{=} \PYG{n}{write}\PYG{p}{(}\PYG{n}{ta}\PYG{p}{,} \PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{y}\PYG{p}{)}
+    \PYG{n}{i} \PYG{o}{=} \PYG{n}{constant}\PYG{p}{(}\PYG{l+m+mi}{2}\PYG{p}{,} \PYG{n}{dtype}\PYG{o}{=}\PYG{k+kt}{Int32}\PYG{p}{)}
+    \PYG{n}{\PYGZus{}}\PYG{p}{,} \PYG{n}{out} \PYG{o}{=} \PYG{n}{while\PYGZus{}loop}\PYG{p}{(}\PYG{n}{condition}\PYG{p}{,} \PYG{n}{body}\PYG{p}{,} \PYG{p}{[}\PYG{n}{i}\PYG{p}{,} \PYG{n}{ta}\PYG{p}{])}
+    \PYG{n}{res} \PYG{o}{=} \PYG{n}{stack}\PYG{p}{(}\PYG{n}{out}\PYG{p}{)}
+\PYG{k}{end}
+\end{Verbatim}

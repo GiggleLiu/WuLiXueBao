@@ -1,0 +1,14 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{k}{using} \PYG{n}{AdFem}
+
+\PYG{n}{f} \PYG{o}{=} \PYG{p}{(}\PYG{n}{x}\PYG{p}{,}\PYG{n}{y}\PYG{p}{)}\PYG{o}{\PYGZhy{}\PYGZgt{}}\PYG{l+m+mf}{1.0}
+\PYG{n}{mmesh} \PYG{o}{=} \PYG{n}{Mesh}\PYG{p}{(}\PYG{l+m+mi}{50}\PYG{p}{,}\PYG{l+m+mi}{50}\PYG{p}{,}\PYG{l+m+mi}{1}\PYG{o}{/}\PYG{l+m+mi}{50}\PYG{p}{)}
+\PYG{n}{xy} \PYG{o}{=} \PYG{n}{gauss\PYGZus{}nodes}\PYG{p}{(}\PYG{n}{mmesh}\PYG{p}{)}
+\PYG{n}{κ} \PYG{o}{=} \PYG{n}{abs}\PYG{p}{(}\PYG{n}{squeeze}\PYG{p}{(}\PYG{n}{fc}\PYG{p}{(}\PYG{n}{xy}\PYG{p}{,} \PYG{p}{[}\PYG{l+m+mi}{20}\PYG{p}{,}\PYG{l+m+mi}{20}\PYG{p}{,}\PYG{l+m+mi}{20}\PYG{p}{,}\PYG{l+m+mi}{1}\PYG{p}{]))} \PYG{o}{+} \PYG{l+m+mf}{3.0}\PYG{p}{)}
+\PYG{n}{A} \PYG{o}{=} \PYG{n}{compute\PYGZus{}fem\PYGZus{}laplace\PYGZus{}matrix1}\PYG{p}{(}\PYG{n}{κ}\PYG{p}{,} \PYG{n}{mmesh}\PYG{p}{)}
+\PYG{n}{F0} \PYG{o}{=} \PYG{n}{eval\PYGZus{}f\PYGZus{}on\PYGZus{}gauss\PYGZus{}pts}\PYG{p}{(}\PYG{n}{f}\PYG{p}{,} \PYG{n}{mmesh}\PYG{p}{)}
+\PYG{n}{F} \PYG{o}{=} \PYG{n}{compute\PYGZus{}fem\PYGZus{}source\PYGZus{}term1}\PYG{p}{(}\PYG{n}{F0}\PYG{p}{,} \PYG{n}{mmesh}\PYG{p}{)}
+\PYG{n}{bdnode} \PYG{o}{=} \PYG{n}{bcnode}\PYG{p}{(}\PYG{n}{mmesh}\PYG{p}{)}
+\PYG{n}{A}\PYG{p}{,} \PYG{n}{F} \PYG{o}{=} \PYG{n}{impose\PYGZus{}Dirichlet\PYGZus{}boundary\PYGZus{}conditions}\PYG{p}{(}\PYG{n}{A}\PYG{p}{,} \PYG{n}{F}\PYG{p}{,} \PYG{n}{bdnode}\PYG{p}{,} \PYG{n}{zeros}\PYG{p}{(}\PYG{n}{length}\PYG{p}{(}\PYG{n}{bdnode}\PYG{p}{)))}
+\PYG{n}{sol} \PYG{o}{=} \PYG{n}{A}\PYG{o}{\PYGZbs{}}\PYG{n}{F}
+\end{Verbatim}

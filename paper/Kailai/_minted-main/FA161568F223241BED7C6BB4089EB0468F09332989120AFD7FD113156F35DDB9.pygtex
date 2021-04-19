@@ -1,0 +1,17 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{k}{using} \PYG{n}{ADCME}
+\PYG{k}{using} \PYG{n}{JLD2}
+
+\PYG{k}{function} \PYG{n}{f}\PYG{p}{(}\PYG{n}{t}\PYG{p}{,} \PYG{n}{y}\PYG{p}{,} \PYG{n}{θ}\PYG{p}{)}
+    \PYG{p}{[}\PYG{n}{θ}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{*}\PYG{p}{(}\PYG{n}{y}\PYG{p}{[}\PYG{l+m+mi}{2}\PYG{p}{]}\PYG{o}{\PYGZhy{}}\PYG{n}{y}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]);}\PYG{n}{y}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{*}\PYG{p}{(}\PYG{n}{θ}\PYG{p}{[}\PYG{l+m+mi}{2}\PYG{p}{]}\PYG{o}{\PYGZhy{}}\PYG{n}{y}\PYG{p}{[}\PYG{l+m+mi}{3}\PYG{p}{])}\PYG{o}{\PYGZhy{}}\PYG{n}{y}\PYG{p}{[}\PYG{l+m+mi}{2}\PYG{p}{];}\PYG{n}{y}\PYG{p}{[}\PYG{l+m+mi}{1}\PYG{p}{]}\PYG{o}{*}\PYG{n}{y}\PYG{p}{[}\PYG{l+m+mi}{2}\PYG{p}{]}\PYG{o}{\PYGZhy{}}\PYG{n}{θ}\PYG{p}{[}\PYG{l+m+mi}{3}\PYG{p}{]}\PYG{o}{*}\PYG{n}{y}\PYG{p}{[}\PYG{l+m+mi}{3}\PYG{p}{]]}
+\PYG{k}{end}
+\PYG{n}{x0} \PYG{o}{=} \PYG{p}{[}\PYG{l+m+mf}{1.}\PYG{p}{;}\PYG{l+m+mf}{0.}\PYG{p}{;}\PYG{l+m+mf}{0.}\PYG{p}{]}
+\PYG{n}{θ} \PYG{o}{=} \PYG{n}{Variable}\PYG{p}{([}\PYG{l+m+mf}{8.0}\PYG{p}{;}\PYG{l+m+mf}{30.0}\PYG{p}{;}\PYG{l+m+mf}{3.0}\PYG{p}{])}
+\PYG{n}{solution} \PYG{o}{=} \PYG{n}{rk4}\PYG{p}{(}\PYG{n}{f}\PYG{p}{,} \PYG{l+m+mf}{3.0}\PYG{p}{,} \PYG{l+m+mi}{100}\PYG{p}{,} \PYG{n}{x0}\PYG{p}{,} \PYG{n}{θ}\PYG{p}{)}
+
+\PYG{n+nd}{@load} \PYG{l+s}{\PYGZdq{}lorentz.dat\PYGZdq{}} \PYG{n}{observations}
+\PYG{n}{loss} \PYG{o}{=} \PYG{n}{sum}\PYG{p}{((}\PYG{n}{solution} \PYG{o}{\PYGZhy{}} \PYG{n}{observations}\PYG{p}{)}\PYG{o}{\PYGZca{}}\PYG{l+m+mi}{2}\PYG{p}{)}
+\PYG{n}{sess} \PYG{o}{=} \PYG{n}{Session}\PYG{p}{();} \PYG{n}{init}\PYG{p}{(}\PYG{n}{sess}\PYG{p}{)}
+
+\PYG{n}{BFGS!}\PYG{p}{(}\PYG{n}{sess}\PYG{p}{,} \PYG{n}{loss}\PYG{p}{,} \PYG{n}{method} \PYG{o}{=} \PYG{l+s}{\PYGZdq{}LBFGS\PYGZdq{}}\PYG{p}{)}
+\end{Verbatim}
