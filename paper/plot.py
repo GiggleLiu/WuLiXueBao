@@ -67,11 +67,13 @@ class PLT(object):
             plt.tight_layout()
 
     def fig3(self, tp="pdf"):
-        FONTSIZE = 16
+        FONTSIZE = 20
         LW = 1.3
-        node = NodeBrush("basic", color='none', lw=LW, size=0.2)
+        node = NodeBrush("basic", color='none', lw=0, size=0.25)
+        sq = NodeBrush("tn.mps", color='black', lw=0, size=0.1)
         node2 = NodeBrush("basic", color='none', lw=LW, edgecolor='none', size=0.001)
         edge = EdgeBrush('->-', lw=LW)
+        edge_ = EdgeBrush('-<-', lw=LW)
         edge2 = EdgeBrush('->.', lw=LW)
         dashed = EdgeBrush('.>.', lw=LW)
         node >> (2.0, 0.0)
@@ -81,55 +83,36 @@ class PLT(object):
             "font.sans-serif": ["Helvetica"],
             'text.latex.preamble': r'\usepackage{dsfont}'
             })
-        with DynamicShow((6,3), 'fig3.%s'%tp) as ds:
-            y = 0.0
-            plt.text(-0.5, y+0.5, "(a)", fontsize=18)
-            a = node >> (0.0, y)
-            b = node >> (1.0, y)
-            c = node >> (2.0, y)
-            d = node >> (3.0, y)
-            e = node >> (4.0, y)
-            dashed >> (a, b)
-            e1 = edge >> (b, c)
-            dashed >> (c, d)
-            e2 = edge >> (d, e)
-            e1.text(r"ODEStep", "top", fontsize=12)
-            e2.text(r"loss", "top", fontsize=12)
-            a.text(r"$s_0$", fontsize=FONTSIZE)
-            b.text(r"$s_{i}$", fontsize=FONTSIZE)
-            c.text(r"$s_{i+1}$", fontsize=FONTSIZE)
-            d.text(r"$s_{n}$", fontsize=FONTSIZE)
-            e.text(r"$\mathcal{L}$", fontsize=FONTSIZE)
-            a.text(r"$\mathds{1}$", "top", fontsize=FONTSIZE, text_offset=0.1, color='r')
-            b.text(r"$\frac{\partial {s}_{i}}{\partial s_0}$", "top", fontsize=FONTSIZE, color='r', text_offset=0.1)
-            c.text(r"$\frac{\partial {s}_{i+1}}{\partial s_0} = {\frac{\partial{s}_{i+1}}{\partial s_i}}\frac{\partial{s}_{i}}{\partial s_0}$", "top", fontsize=FONTSIZE, color='r', text_offset=0.1)
-            d.text(r"$\frac{\partial {s}_{n}}{\partial s_0}$", "top", fontsize=FONTSIZE, color='r', text_offset=0.1)
-            e.text(r"$\frac{\partial \mathcal{L}}{\partial s_0}$", "top", fontsize=FONTSIZE, color='r', text_offset=0.1)
+        with DynamicShow((10,3), 'fig3.%s'%tp) as ds:
+            def seq(x, y, edge, labels, color, n):
+                nodes = [node >> (x+i, y) for i in range(n)]
+                for i in range(n-1):
+                    edge >> (nodes[i], nodes[i+1])
+                for nd, label in zip(nodes, labels):
+                    nd.text(label, fontsize=FONTSIZE, color=color)
+                return nodes
 
-            y = -1.1
-            plt.text(-0.5, y+0.5, "(b)", fontsize=18)
-            a = node >> (0.0, y)
-            b = node >> (1.0, y)
-            c = node >> (2.0, y)
-            d = node >> (3.0, y)
-            e = node >> (4.0, y)
-            dashed >> (b, a)
-            e1 = edge >> (c, b)
-            dashed >> (d, c)
-            e2 = edge >> (e, d)
-            e1.text(r"ODEStep", "top", fontsize=12)
-            e2.text(r"loss", "top", fontsize=12)
-            a.text(r"$s_0$", fontsize=FONTSIZE)
-            b.text(r"$s_{i}$", fontsize=FONTSIZE)
-            c.text(r"$s_{i+1}$", fontsize=FONTSIZE)
-            d.text(r"$s_{n}$", fontsize=FONTSIZE)
-            e.text(r"$\mathcal{L}$", fontsize=FONTSIZE)
-            a.text(r"$\frac{\partial \mathcal{L}}{\partial s_0}$", "top", fontsize=FONTSIZE, color='r', text_offset=0.1)
-            #b.text(r"$\frac{\partial \mathcal{L}}{\partial s_i}$", "top", fontsize=FONTSIZE, color='r', text_offset=0.1)
-            b.text(r"$ \frac{\partial \mathcal{L}}{\partial s_i} = \frac{\partial \mathcal{L}}{\partial s_{i+1}}{\frac{\partial{s}_{i+1}}{\partial s_i}}$", "top", fontsize=FONTSIZE, color='r', text_offset=0.1)
-            c.text(r"$\frac{\partial \mathcal{L}}{\partial s_{i+1}}$", "top", fontsize=FONTSIZE, color='r', text_offset=0.1)
-            d.text(r"$\frac{\partial \mathcal{L}}{\partial s_{n}}$", "top", fontsize=FONTSIZE, color='r', text_offset=0.1)
-            e.text(r"$1$", "top", fontsize=FONTSIZE, text_offset=0.1, color='r')
+            x = 5.5
+            y = -1.5
+            labels = [r"$s_%d$"%i for i in range(4)] + [r"$\mathcal{L}$"]
+            plt.text(-0.5, 0.5, "(a)", fontsize=18)
+            n1s = seq(0, 0, edge, labels, 'k', 5)
+            labels_fd = [r"$\mathds{1}$"] + [r"$\frac{d {s}_{%d}}{d s_0}$"%i for i in range(1,4)] + [r"$\frac{d \mathcal{L}}{d s_0}$"]
+            n2s = seq(0, y, edge, labels_fd, 'k', 5)
+            for i in range(4):
+                edge >> (n1s[i], n2s[i+1])
+            #c.text(r"$\frac{d {s}_{i+1}}{d s_0} = {\frac{d{s}_{i+1}}{d s_i}}\frac{d{s}_{i}}{d s_0}$", "top", fontsize=FONTSIZE, color='r', text_offset=0.1)
+
+            plt.text(x-0.5, 0.5, "(b)", fontsize=18)
+            n3s = seq(x, 0, edge, labels, 'k', 5)
+
+            labels_bp = [r"$\frac{d \mathcal{L}}{d s_0}$"] + [r"$\frac{d \mathcal{L}}{d s_{%d}}$"%(i+1) for i in range(3)] + [r"$1$", "top"]
+            #b.text(r"$ \frac{d \mathcal{L}}{d s_i} = \frac{d \mathcal{L}}{d s_{i+1}}{\frac{d{s}_{i+1}}{d s_i}}$", "top", fontsize=FONTSIZE, color='r', text_offset=0.1)
+            n4s = seq(x, y, edge_, labels_bp, 'k', 5)
+            for i in range(4):
+                si = sq >> [x+i, y/2]
+                edge >> (n3s[i], si)
+                edge >> (si, n4s[i])
 
     def fig4(self, tp='pdf'):
         fname="./lorenz_grad"

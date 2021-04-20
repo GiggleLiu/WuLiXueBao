@@ -154,7 +154,7 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
     顾名思义，前向自动微分是指向前（指与程序运行方向相同）传播导数，它和数学分析中的无穷小量有关。
     \begin{figure}[t]
         \centering
-        \includegraphics[width=0.7\columnwidth,trim={0 0cm 0 0},clip]{fig3.pdf}
+        \includegraphics[width=0.9\columnwidth,trim={0 0cm 0 0},clip]{fig3.pdf}
 
 %\begin{subfigure}[b]{0.32\textwidth}
 %    \centering
@@ -171,7 +171,7 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
 %    \includegraphics[width=\textwidth, trim={0 3cm 1cm 1cm}, clip]{./backward-backward.pdf}
 %    \caption{\small 后向自动微分中的梯度反向传播}
 %\end{subfigure}
-        \caption{(a) 前向自动微分和 (b) 后向自动微分再常微分方程中的应用，其中圆圈为变量，线条上的箭头梯度传播的方向。}\label{fig:autodifftypes} 
+        \caption{(a) 前向自动微分和 (b) 后向自动微分再常微分方程中的应用，其中圆圈为缓存的变量，线条上的箭头代表运算的方向。}\label{fig:autodifftypes} 
         %\caption{利用自动微分计算对于计算过程$y = z * \sin(x)$的导数$\overline{x}\equiv \frac{\partial y}{\partial x}$和$\overline{z}\equiv \frac{\partial y}{\partial z}$。其中圆圈代表函数，线代表变量，箭头代表运算方向，$\Sigma$是一个用于缓存中间计算结果的全局堆栈（一种以先进后出的存储结构）而\texttt{push}和\texttt{pop}分别代表了对该堆栈的入栈（存储）和出栈（取出）操作。}\label{fig:autodifftypes} 
 \end{figure}
 数学中，在对一个输入变量$p$求导时，会让它携带一个无穷小量$\D p$，并通过对这个无穷小量的运算完成对程序的求导。比如当作用函数$f$时，会有如下链式法则
@@ -231,24 +231,7 @@ $$\texttt{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
     ,\overline{\theta} + \overline{s_{i+1}}\frac{\partial s_{i+1}}{\partial \theta}\right)%\right)
 \end{align*}
 %\end{minipage}
-这里也同样略去了积分函数和时间等参量。考虑到该后向传播过程需要知道函数的输入，我们需要用一种方式反向遍历状态，最直接的方式是将所有中间状态缓存。此时前向计算（左侧）和后向梯度传播（右侧）可表达为
-
-\begin{minipage}{0.45\textwidth}
-\begin{align*}
-    &\text{\# 正向计算（单步）}\\
-    &\texttt{push}(\Sigma, s_i)\\
-    &s_{i+1} = {\rm ODEStep}(s_{i})\\
-\end{align*}
-\end{minipage}
-\begin{minipage}{0.45\textwidth}
-\begin{align*}
-    &\text{\# 反向传播（单步）}\\
-    &s_{i} = \texttt{pop}(\Sigma)\\
-    &(\overline{s_i}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+1}}, \overline{\theta},s_i)\\
-\end{align*}
-\end{minipage}
-
-正向计算过程中除了运算本身，还会将部分运算的中间结果通过入栈操作\texttt{push($\Sigma$,$s_i$)}将状态$s_i$的值放入一个全局堆栈$\Sigma$中，而后向过程将这些缓存的结果通过出栈操作\texttt{$s_i$ = pop($\Sigma$)}取出$s_i$的值并利用后向传播规则更新$\overline s_i$和$\overline \theta$。
+这里也同样略去了积分函数和时间等参量。考虑到该后向传播过程需要知道函数的输入，我们需要用一种方式反向遍历状态，最直接的方式是将所有中间状态缓存。正向计算过程中除了运算本身，还会将部分运算的中间结果通过入栈操作\texttt{push($\Sigma$,$s_i$)}将状态$s_i$的值放入一个全局堆栈$\Sigma$中，而后向过程将这些缓存的结果通过出栈操作\texttt{$s_i$ = pop($\Sigma$)}取出$s_i$的值并利用后向传播规则更新$\overline s_i$和$\overline \theta$。
 %导数回传的计算复杂度与需要求导的变量数目无关，因此它在求导$\sim 10^2$以上的输入变量的优化问题中对比前向自动微分拥有优势，这也是为什么所有的主流自动微分框架都采用梯度后向传播的模式。
 %后向自动微分也有缺点，那就是向堆栈中存储数据带来了正比于计算步骤数 ($\bigO(T)$)的额外空间开销以及频繁访问内存带来的性能下降的问题，这是后向自动微分框架设计的复杂性的来源。
 虽然导数回传的计算复杂度与需要求导的变量数目无关，但后向自动微分向堆栈中存储数据带来了正比于计算步骤数 (i.e. $\bigO(T)$)的额外空间开销。
