@@ -125,7 +125,7 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
         &= (s_{i+1} = {\rm ODEStep}(f, s_{i}, \theta, t_i, \Delta t) ~\text{for $i=0,2, \ldots, n-1$})
     \end{split}
 \end{align}
-其中$s_i$为完成第$i$步积分后的状态。
+其中$s_i$为完成第$i$步积分后的状态，下文我们有时候会将单步运算简记为${\rm ODEStep}(s_{i})$。
 最后我们还会定义一个损失函数$\mathcal{L} = {\rm loss}(s_n)$。
     自动微分的目标则是求解损失量对参数的导数$\frac{\partial \mathcal{L}}{\partial s_0}$和$\frac{\partial \mathcal{L}}{\partial \theta}$。
     %$$s_{i+1} = s_{i} + f(s_i, t, \theta)$$
@@ -187,9 +187,9 @@ $$\texttt{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 简单的运算规则的替换对于人类来说尚可手动，但真实的程序可能会包含数以亿计的这样的基础操作，虽然结果依然是解析的，但是人们很难再通过人力得到具体的导数表达式，而计算机恰恰很擅长这样繁琐但是规则简单的任务。
 如图~\ref{fig:autodifftypes} (a) 所示，在求解常微分方程中，单步前向自动微分可以形式化的表达为
 \begin{align*}
-    {\rm ODEStep}^{\rm F} : \left(\left(s_{i}, \frac{\D s_{i}}{\D s_0}\right), \left(\theta, \frac{\D s_{i}}{\D \theta}\right)\right)
-        \mapsto &\left(\left({\rm ODEStep}\left(f, s_{i}, \theta, t_i, \Delta t \right), \frac{\partial s_{i+1}}{\partial s_i} \frac{\D s_{i}}{\D s_0}\right)\right., \\
-        &\left.\left(\theta, \frac{\partial s_{i+1}}{\partial s_i} \frac{\D s_{i}}{\D \theta} + \frac{\partial s_{i+1}}{\partial \theta}\right)\right)
+    {\rm ODEStep}^{\rm F} : \left(s_{i}, \frac{\D s_{i}}{\D s_0}, \frac{\D s_{i}}{\D \theta}\right)
+        \mapsto &\left({\rm ODEStep}\left(s_{i}\right), \frac{\partial s_{i+1}}{\partial s_i} \frac{\D s_{i}}{\D s_0},
+        \frac{\partial s_{i+1}}{\partial s_i} \frac{\D s_{i}}{\D \theta} + \frac{\partial s_{i+1}}{\partial \theta}\right)
 \end{align*}
 这里为了简洁略去了积分函数和时间等常数参量。由于状态$s_i, s_{i+1}$和控制参数$\theta$均可包含多个变量，上述偏微分均解释为雅可比行列式。
 %真实的程序计算中，仅通过基本运算的代码替换或者算符重载即可实现该变换。
@@ -232,13 +232,13 @@ $$\texttt{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
     ,\overline{\theta} + \overline{s_{i+1}}\frac{\partial s_{i+1}}{\partial \theta}\right)%\right)
 \end{align*}
 %\end{minipage}
-这里也同样略去了积分函数和时间等参量。考虑到该后向传播过程需要知道函数的输入，整个前向计算（左侧）和后向梯度传播（右侧）可表达为
+这里也同样略去了积分函数和时间等参量。考虑到该后向传播过程需要知道函数的输入，我们需要用一种方式反向遍历状态，最直接的方式是将所有中间状态缓存。此时前向计算（左侧）和后向梯度传播（右侧）可表达为
 
 \begin{minipage}{0.45\textwidth}
 \begin{align*}
     &\text{\# 正向计算（单步）}\\
     &\texttt{push}(\Sigma, s_i)\\
-    &s_{i+1} = {\rm ODEStep}(f, s_{i}, \theta, t_i, \Delta t)\\
+    &s_{i+1} = {\rm ODEStep}(s_{i})\\
 \end{align*}
 \end{minipage}
 \begin{minipage}{0.45\textwidth}
@@ -253,7 +253,66 @@ $$\texttt{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 %导数回传的计算复杂度与需要求导的变量数目无关，因此它在求导$\sim 10^2$以上的输入变量的优化问题中对比前向自动微分拥有优势，这也是为什么所有的主流自动微分框架都采用梯度后向传播的模式。
 %后向自动微分也有缺点，那就是向堆栈中存储数据带来了正比于计算步骤数 ($\bigO(T)$)的额外空间开销以及频繁访问内存带来的性能下降的问题，这是后向自动微分框架设计的复杂性的来源。
 虽然导数回传的计算复杂度与需要求导的变量数目无关，但后向自动微分向堆栈中存储数据带来了正比于计算步骤数 (i.e. $\bigO(T)$)的额外空间开销。
-如何设计算法在保证对计算状态逆序的访问的前提下，减少计算中使用的堆栈$\Sigma$的大小，是反向传播复杂性的来源，也被叫做“时间与空间的权衡”问题。我们在章节~\ref{sec:timespace}中讨论这个问题。
+如何设计算法在保证对计算状态逆序的访问的前提下，减少计算中使用的堆栈$\Sigma$的大小，是反向传播复杂性的来源，也被叫做“时间与空间的权衡”问题。
+%我们在章节~\ref{sec:timespace}中讨论这个问题。
+实际应用中，我们并不需要把每一步的状态都缓存，我们可以用检查点~\cite{Griewank1992}或者可逆计算~\cite{Liu2020b}来避免缓存中间结果。如图~\ref{fig:tradeoff-both} (a) 所示的检查点方案中，正向计算中程序可以选择性的不缓存部分状态（空心圆点）。
+在下图的反向传播过程中，当需要的数据没有被缓存，则从最近的检查点（黑色圆点）出发重新计算该数据。
+在图 (b) 所示的可逆计算方案中，我们假设积分过程本身不可逆，此时可逆计算的可逆性要求每步输入状态都被缓存以保证严格可逆。可逆计算可以通过反向计算（步骤5）来消除已经分配的内存，即用更多的计算时间交换内存。
+在反向过程中，执行顺序和前向相反，同时每个指令变成原指令的逆，因此可以自然的获得运行时的状态信息。
+
+\begin{figure}
+    \centering
+\begin{tikzpicture}
+    \def\dx{0}
+    \foreach \x in {1,...,5}
+        \draw [->,thick] (\x+\dx-0.9,0.1) .. controls (\x+\dx-0.5,0.5) .. (\x+\dx-0.1,0.1)
+        node[pos=0.5,yshift=1ex]{\x};
+    \foreach \x in {3}
+        \filldraw[fill=white] (\x+\dx,0) circle [radius=0.1];
+    \foreach \x in {0,1,2,4,5}
+        \filldraw[fill=black] (\x+\dx,0) circle [radius=0.1];
+    % bottom
+    \def\y{-2.0};
+    \foreach[evaluate={\j=\x==1?\x:int(\x+1)}] \x in {5,...,1}
+        \draw [red,<-,thick] (5.1-\x+\dx,\y-0.1) .. controls (5.5-\x+\dx,\y-0.5) .. (5.9-\x+\dx,\y-0.1)
+        node[pos=0.5,yshift=-1ex]{\j};
+    \foreach \x in {2}
+        \draw [->,thick] (\x+\dx+0.1,\y+0.1) .. controls (\x+\dx+0.5,\y+0.5) .. (\x+\dx+0.9,\y+0.1)
+        node[pos=0.5,yshift=1ex]{\x};
+    \foreach \x in {3}
+        \filldraw[fill=white] (\x+\dx,\y) circle [radius=0.1];
+    \foreach \x in {0,1,2,4,5}
+        \filldraw[fill=black] (\x+\dx,\y) circle [radius=0.1];
+    \draw (2.5,-3.3) node {(a)};
+
+    % reversible computing
+    \def\dx{7}
+    \foreach[evaluate={\j=\x==5?int(\x+1):\x}] \x in {1,...,5}
+        \draw [->,thick] (\x-0.9+\dx,0.1) .. controls (\x-0.5+\dx,0.5) .. (\x-0.1+\dx,0.1)
+        node[pos=0.5,yshift=1ex]{\j};
+    \foreach \x in {3}
+        \draw [<-,thick] (\x-0.9+\dx,-0.1) .. controls (\x-0.5+\dx,-0.5) .. (\x-0.1+\dx,-0.1)
+        node[pos=0.5,yshift=-1ex]{5};
+    \foreach \x in {3}
+        \filldraw[fill=white] (\x+\dx,0) circle [radius=0.1];
+    \foreach \x in {0,1,2,4,5}
+        \filldraw[fill=black] (\x+\dx,0) circle [radius=0.1];
+    % bottom
+    \def\y{-2.0};
+    \foreach[evaluate={\j=\x==5?int(6-\x):int(7-\x)}] \x in {1,...,5}
+        \draw [blue,<-,thick] (\x-0.9+\dx,\y-0.1) .. controls (\x-0.5+\dx,\y-0.5) .. (\x-0.1+\dx,\y-0.1)
+        node[pos=0.5,yshift=-1ex]{\j};
+    \foreach \x in {2}
+        \draw [blue,->,thick] (\x+0.1+\dx,\y+0.1) .. controls (\x+\dx+0.5,\y+0.5) .. (\x+\dx+0.9,\y+0.1)
+        node[pos=0.5,yshift=1ex]{\x};
+    \foreach \x in {3}
+        \filldraw[fill=white] (\x+\dx,\y) circle [radius=0.1];
+    \foreach \x in {0,1,2,4,5}
+        \filldraw[fill=black] (\x+\dx,\y) circle [radius=0.1];
+    \draw (2.5+\dx,-3.3) node {(b)};
+\end{tikzpicture}
+    \caption{(a) 检查点方案和 (b) 可逆计算方案中避免缓存的方式。图中黑箭头为正常计算过程，红箭头为梯度回传过程，蓝箭头为梯度回传和反计算的复合过程，箭头上的数字代表了执行顺序。黑色和白色的圆点为被缓存和未被缓存 (或被反计算消除) 的状态。}\label{fig:tradeoff-both}
+\end{figure}
 
 \section{时间与空间的权衡}\label{sec:timespace}
 \subsection{重计算与反计算}
@@ -263,8 +322,8 @@ $$\texttt{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 \begin{align*}
     &\text{\# 正向计算}\\
     &\texttt{push}(\Sigma, s_i)\\
-    &s_{i+1} = {\rm ODEStep}(f, s_{i}, \theta, t_i, \Delta t)\\
-    &s_{i+2} = {\rm ODEStep}(f, s_{i+1}, \theta, t_i, \Delta t)\\
+    &s_{i+1} = {\rm ODEStep}(s_{i})\\
+    &s_{i+2} = {\rm ODEStep}(s_{i+1})\\
     &\texttt{push}(\Sigma, s_{i+2})
 \end{align*}
 \end{minipage}
@@ -275,7 +334,7 @@ $$\texttt{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
     %&\overline{s_{i+2}} = \overline{s_{i+3}}\frac{\partial s_{i+3}}{\partial s_{i+2}}\\
     &(\overline{s_{i+2}}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+3}}, \overline{\theta}, s_{i+2})\\
     &s_{i} = \texttt{read}(\Sigma, \texttt{i})\\
-    &s_{i+1} = {\rm ODEStep}(f, s_{i}, \theta, t_i, \Delta t)  ~\# ~\text{重计算}\\
+    &s_{i+1} = {\rm ODEStep}(s_{i})  ~\# ~\text{重计算}\\
     %&\overline{s_{i+1}} = \overline{s_{i+2}}\frac{\partial s_{i+2}}{\partial s_{i+1}}\\
     &(\overline{s_{i+1}}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+2}}, \overline{\theta}, s_{i+1})\\
     &s_{i} = \texttt{pop}(\Sigma)\\
@@ -297,10 +356,10 @@ $$\texttt{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 \begin{align*}
     &\text{\# 正向计算}\\
     &s_{i+1} \leftarrow 0\\
-    &s_{i+1} \mathrel{+}= {\rm ODEStep}(f, s_{i}, \theta, t_i, \Delta t)\\
+    &s_{i+1} \mathrel{+}= {\rm ODEStep}(s_{i})\\
     &s_{i+2} \leftarrow 0\\
-    &s_{i+2} \mathrel{+}= {\rm ODEStep}(f, s_{i+1}, \theta, t_i, \Delta t)\\
-    &s_{i+1} \mathrel{-}= {\rm ODEStep}(f, s_{i}, \theta, t_i, \Delta t) ~\#~\text{反计算}\\
+    &s_{i+2} \mathrel{+}= {\rm ODEStep}(s_{i+1})\\
+    &s_{i+1} \mathrel{-}= {\rm ODEStep}(s_{i}) ~\#~\text{反计算}\\
     &s_{i+1} \rightarrow 0 ~\# ~\text{归还}~ s_{i+1}
 \end{align*}
 \end{minipage}
@@ -308,10 +367,10 @@ $$\texttt{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 \begin{align*}
     &\text{\# 反向计算}\\
     &s_{i+1} \leftarrow 0\\
-    &s_{i+1} \mathrel{+}= {\rm ODEStep}(f, s_{i}, \theta, t_i, \Delta t) ~\# ~\text{计算}~ s_{i+1}\\
-    &s_{i+2} \mathrel{-}= {\rm ODEStep}(f, s_{i+1}, \theta, t_i, \Delta t)\\
+    &s_{i+1} \mathrel{+}= {\rm ODEStep}(s_{i}) ~\# ~\text{计算}~ s_{i+1}\\
+    &s_{i+2} \mathrel{-}= {\rm ODEStep}(s_{i+1})\\
     &s_{i+2} \rightarrow 0\\
-    &s_{i+1} \mathrel{-}= {\rm ODEStep}(f, s_{i}, \theta, t_i, \Delta t)\\
+    &s_{i+1} \mathrel{-}= {\rm ODEStep}(s_{i})\\
     &s_{i+1} \rightarrow 0
 \end{align*}
 \end{minipage}
@@ -321,11 +380,11 @@ $$\texttt{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 \begin{align*}
     &(\overline{s_{i+2}}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+3}}, \overline{\theta}, s_{i+2})\\
     &s_{i+1} \leftarrow 0\\
-    &s_{i+1} \mathrel{+}= {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t) ~\# ~\text{计算}~ s_{i+1}\\
+    &s_{i+1} \mathrel{+}= {\rm ODEStep}(s_{i}) ~\# ~\text{计算}~ s_{i+1}\\
     &(\overline{s_{i+1}}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+2}}, \overline{\theta}, s_{i+1})\\
-    &s_{i+2} \mathrel{-}= {\rm ODEStep}(s_{i+1}, t_i, \theta, \Delta t)\\
+    &s_{i+2} \mathrel{-}= {\rm ODEStep}(s_{i+1})\\
     &s_{i+2} \rightarrow 0\\
-    &s_{i+1} \mathrel{-}= {\rm ODEStep}(s_{i}, t_i, \theta, \Delta t)\\
+    &s_{i+1} \mathrel{-}= {\rm ODEStep}(s_{i})\\
     &s_{i+1} \rightarrow 0\\
     &(\overline{s_{i}}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+1}}, \overline{\theta}, s_{i})
 \end{align*}
