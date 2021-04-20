@@ -108,8 +108,7 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
 %而广义的自动微分没有这些问题，它微分规则定义在标量的最基础的运算之上，这些基础运算有限而且很难出错。但它在张量运算中的性能却不尽如人意。
 %一个很好的描述它与狭义自动微分区别的例子是，当将两个复数相加，广义的自动微分看到的是实部相加和虚部相加这两个操作，而狭义自动微分则需要推导适用于复变函数的Wirtinger导数~\cite{Hirose2003}。
    本文将会介绍共轭态方法，前向自动微分以及基于最优检查点算法和可逆计算的后向自动微分等自动微分方法在处理物理模拟问题中的应用，对比不同方法的优劣以及适用的场景。
-章节\ref{sec:forwardbackward}~ 介绍了几种自动微分方法的基本原理。
-章节\ref{sec:timespace}~ 介绍了基于检查点和可逆编程的两种后向自动微分的基础理论，尤其两者如何权衡程序的运行时间和空间。
+章节\ref{sec:forwardbackward}~ 介绍了几种自动微分方法的基本理论，尤其是关于如何在反向自动微分中权衡程序的运行时间和空间。
 章节\ref{sec:applications}~ 介绍了不同自动微分技术在地震波模拟过程中的应用。
 
 \section{自动微分方法}\label{sec:forwardbackward}
@@ -314,91 +313,7 @@ $$\texttt{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
     \caption{(a) 检查点方案和 (b) 可逆计算方案中避免缓存的方式。图中黑箭头为正常计算过程，红箭头为梯度回传过程，蓝箭头为梯度回传和反计算的复合过程，箭头上的数字代表了执行顺序。黑色和白色的圆点为被缓存和未被缓存 (或被反计算消除) 的状态。}\label{fig:tradeoff-both}
 \end{figure}
 
-\section{时间与空间的权衡}\label{sec:timespace}
-\subsection{重计算与反计算}
-一种避免每一步都将计算状态保存到堆栈的方式是重计算，即从已知状态出发，通过重新计算未缓存的结果。如下例子通过重计算省去缓存$s_{i+1}$
-
-\begin{minipage}{0.45\textwidth}
-\begin{align*}
-    &\text{\# 正向计算}\\
-    &\texttt{push}(\Sigma, s_i)\\
-    &s_{i+1} = {\rm ODEStep}(s_{i})\\
-    &s_{i+2} = {\rm ODEStep}(s_{i+1})\\
-    &\texttt{push}(\Sigma, s_{i+2})
-\end{align*}
-\end{minipage}
-\begin{minipage}{0.45\textwidth}
-\begin{align*}
-    &\text{\# 反向传播}\\
-    &s_{i+2} = \texttt{pop}(\Sigma)\\
-    %&\overline{s_{i+2}} = \overline{s_{i+3}}\frac{\partial s_{i+3}}{\partial s_{i+2}}\\
-    &(\overline{s_{i+2}}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+3}}, \overline{\theta}, s_{i+2})\\
-    &s_{i} = \texttt{read}(\Sigma, \texttt{i})\\
-    &s_{i+1} = {\rm ODEStep}(s_{i})  ~\# ~\text{重计算}\\
-    %&\overline{s_{i+1}} = \overline{s_{i+2}}\frac{\partial s_{i+2}}{\partial s_{i+1}}\\
-    &(\overline{s_{i+1}}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+2}}, \overline{\theta}, s_{i+1})\\
-    &s_{i} = \texttt{pop}(\Sigma)\\
-    %&\overline{s_i} = \overline{s_{i+1}}\frac{\partial s_{i+1}}{\partial s_{i}}
-    &(\overline{s_i}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+1}}, \overline{\theta}, s_{i})\\
-\end{align*}
-\end{minipage}
-
-这里，\texttt{read}函数仅读取数据而不对数据出栈。在正向计算过程中，我们选择性的没有存储状态$s_{i+1}$。
-在反向计算过程中，由于状态$s_{i+1}$不存在，程序通过读取$s_{i}$的状态重新计算得到$s_{i+1}$。
-通过这种方式，堆栈的大小可以减少1。如何最优的选择存储和释放状态成了检查点方案的关键，
-这个最优方案在1992年被Griewank~\cite{Griewank1992}提出，被成为Treeverse算法，该算法仅需对数多个存储空间，即表~\ref{tbl:complexity}所示的空间复杂度$\bigO(S\log(T))$，其中$S$为单个状态的空间大小，$T$为时间，或这里的步数。以及对数的额外时间开销，即时间复杂度$\bigO(T\log(T))$。
-
-还有一种可以保证变量方案叫做可逆编程，意思是让代码在结构上具有可逆性，比如在可逆编程语言的框架下书写代码。
-可逆的书写意味着赋值和清除变量这些常见的操作不再被允许，取而代之的是累加 (\texttt{+=}) 和累减 (\texttt{-=})，从内存空“借”一段空内存 ($\leftarrow$) 和将一个已经清除的变量“归还”给内存 ($\rightarrow$)等。
-可逆计算赋予用户更高的自由度去控制内存的分配与释放，以如下的程序计算过程（左侧）和它的反过程（右侧）为例
-
-\begin{minipage}{0.45\textwidth}
-\begin{align*}
-    &\text{\# 正向计算}\\
-    &s_{i+1} \leftarrow 0\\
-    &s_{i+1} \mathrel{+}= {\rm ODEStep}(s_{i})\\
-    &s_{i+2} \leftarrow 0\\
-    &s_{i+2} \mathrel{+}= {\rm ODEStep}(s_{i+1})\\
-    &s_{i+1} \mathrel{-}= {\rm ODEStep}(s_{i}) ~\#~\text{反计算}\\
-    &s_{i+1} \rightarrow 0 ~\# ~\text{归还}~ s_{i+1}
-\end{align*}
-\end{minipage}
-\begin{minipage}{0.45\textwidth}
-\begin{align*}
-    &\text{\# 反向计算}\\
-    &s_{i+1} \leftarrow 0\\
-    &s_{i+1} \mathrel{+}= {\rm ODEStep}(s_{i}) ~\# ~\text{计算}~ s_{i+1}\\
-    &s_{i+2} \mathrel{-}= {\rm ODEStep}(s_{i+1})\\
-    &s_{i+2} \rightarrow 0\\
-    &s_{i+1} \mathrel{-}= {\rm ODEStep}(s_{i})\\
-    &s_{i+1} \rightarrow 0
-\end{align*}
-\end{minipage}
-
-这里我们先是从状态$s_i$经过两步计算得到了状态$s_{i+1}$和$s_{i+2}$。由于$s_{i+1}$在接下来的运算中不会被用到，我们可以利用已有信息$s_i$将它反计算为$0$，并将存储空间“归还”给系统。
-有了反过程，仅需要在反过程中插入求导程序即可完成自动微分。
-\begin{align*}
-    &(\overline{s_{i+2}}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+3}}, \overline{\theta}, s_{i+2})\\
-    &s_{i+1} \leftarrow 0\\
-    &s_{i+1} \mathrel{+}= {\rm ODEStep}(s_{i}) ~\# ~\text{计算}~ s_{i+1}\\
-    &(\overline{s_{i+1}}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+2}}, \overline{\theta}, s_{i+1})\\
-    &s_{i+2} \mathrel{-}= {\rm ODEStep}(s_{i+1})\\
-    &s_{i+2} \rightarrow 0\\
-    &s_{i+1} \mathrel{-}= {\rm ODEStep}(s_{i})\\
-    &s_{i+1} \rightarrow 0\\
-    &(\overline{s_{i}}, \overline{\theta}) = \overline{\rm ODEStep}^B(\overline{s_{i+1}}, \overline{\theta}, s_{i})
-\end{align*}
-在可逆计算的时间和空间的交换规则下，最优的算法是Bennett算法，其空间的额外开销也是对数，但是时间的额外开销变为了多项式，即表~\ref{tbl:complexity}所示的时间复杂度$\bigO(T^{1+\epsilon})$，其中$\epsilon > 0$，高于最优检查点方案的对数复杂度。
-Treeverse算法和Bennett算法分别是源代码后向自动微分（一种通过源代码变换实现的反向传播技术）和可逆计算中权衡时间与空间的核心的算法。为了更好的理解这些算法以方便更好的对物理模拟过程微分，我们用鹅卵石游戏模型来进行说明。
-
-%其实还有一种更加简单的做法是，那就是仅记录程序的初始状态，当需要获取第$k$个计算状态$s_k$，程序从初始状态$s_0$开始进行$k$步运算。这个算法虽然没有额外的空间开销，但是需要$\bigO(T^2)$的运行时间。
-%但很多实践中，不管是$\bigO(T^2)$的时间开销或者是$\bigO(T)$的空间开销都不实际，人们更需要的是一个均衡的计算时间和计算空间的方案。
-%人们设计出了检查点方案，它的核心思路是在确定在程序运行的何时，何处进行状态拷贝。最优的关于时间和空间交换的检查点方案在1992年被Griewank~\cite{Griewank1992}提出，它是很多广义自动微分框架的基础。
- 
-%回溯中间状态还有另一种做法，那就是可逆计算。可逆计算的代码不需要借助全局堆栈也可以被回溯。但它并非免费的午餐，因为它也需要额外的空间保证不丢弃信息以保证可逆性。它并不像传统代码一样可以随意的擦除或释放内存，可逆计算“释放”内存的方式是通过反计算把变量内容恢复到0状态，也就是用反计算的时间交换空间。
-
-\subsection{鹅卵石游戏}
-鹅卵石游戏是一个定义在一维格子上的单人游戏，它最初被提出描述可逆计算中的时间与空间的交换关系。游戏开始时，玩家拥有一堆鹅卵石以及一个一维排布的$n$个格子，标记为$0,1,2\ldots n$，并且在$0$号格子上有一个预先布置的鹅卵石。
+不论是检查点方案还是可逆计算方案，为了节省内存都需要消耗更多的时间，那么如何权衡是加与空间才是最好呢？这里我们引入一个简单的理论模型叫做鹅卵石游戏，一个定义在一维格子上的单人游戏。鹅卵石游戏最初被提出描述可逆计算中的时间与空间的交换关系。游戏开始时，玩家拥有一堆鹅卵石以及一个一维排布的$n$个格子，标记为$0,1,2\ldots n$，并且在$0$号格子上有一个预先布置的鹅卵石。
 其规则为
 \begin{tcolorbox}[width=\textwidth, title=鹅卵石游戏-可逆计算版本]
     \setstretch{1.5}
