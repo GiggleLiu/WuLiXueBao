@@ -1,3 +1,5 @@
+using ..TreeverseAndBennett: run_benchmarks
+
 function f_nilang(; y0 = P3(1.0, 0.0, 0.0), θ=(10.0, 27.0, 8/3), Nt=10000, Δt = 3e-3)
     i_ODESolve(RK4(), lorenz!, zeros(typeof(y0), Nt+1), y0, θ; ts=0.0:Δt:Δt*Nt)[3]
 end
@@ -14,11 +16,17 @@ function g_forwarddiff(; y0 = P3(1.0, 0.0, 0.0), θ=(10.0, 27.0, 8/3), Δt=3e-3,
     ForwardDiff.gradient(x->ODESolve(RK4(), lorenz, P3(x[1:3]...), (x[4:6]...,); ts=ts=0.0:Δt:Nt*Δt).x, [y0.x, y0.y, y0.z, θ...])
 end
 
+function g_neuralode(; y0 = P3(1.0, 0.0, 0.0), θ=(10.0, 27.0, 8/3), Δt=3e-3, Nt=10000, checkpoint_step=200)
+    gn = P3(1.0, 0.0, 0.0)
+    gθ = Glued(1.0, 0.0, 0.0)
+    g1, gθ = checkpointed_neuralode(RK4(), lorenz, force_gradient, y0, gn, θ, gθ; ts=0:Δt:Nt*Δt, checkpoint_step=checkpoint_step)
+end
+
 export run_lorenz_benchmarks
 
-function run_lorenz_benchmarks(; output_file = joinpath(pwd(), "benchmark_lorenz.dat"))
+function run_lorenz_benchmarks(; output_file = joinpath(dirname(dirname(@__DIR__)), "paper/benchmark_lorenz.dat"))
     run_benchmarks(
-        ["NiLang"=>f_nilang, "NiLang.AD"=>g_nilang, "Julia"=>f_julia, "ForwardDiff"=>g_forwarddiff];
+        ["NiLang"=>f_nilang, "NiLang.AD"=>g_nilang, "Julia"=>f_julia, "ForwardDiff"=>g_forwarddiff, "NeuralODE"=>g_neuralode];
         output_file = output_file
     )
 end
@@ -32,6 +40,24 @@ function run_lorenz_phase(σs, ρs, βs; fname=joinpath(dirname(dirname(@__DIR__
         writedlm(fname*"_curve.dat", curve)
     end
     return mean_abs_grads, curve
+end
+
+export run_lorenz_line
+function run_lorenz_line(; y0 = P3(1.0, 0.0, 0.0), Nt=10000, Δt = 3e-3, fname=joinpath(dirname(dirname(@__DIR__)), "paper/lorenz_line.dat"))
+    θ1=(10.0, 27.0, 8/3)
+    res1 = i_ODESolve(RK4(), lorenz!, zeros(typeof(y0), Nt+1), y0, θ1; ts=0.0:Δt:Δt*Nt)[3]
+    θ2=(10.0, 15.0, 8/3)
+    res2 = i_ODESolve(RK4(), lorenz!, zeros(typeof(y0), Nt+1), y0, θ2; ts=0.0:Δt:Δt*Nt)[3]
+    M = zeros(6, Nt+1)
+    for i=1:Nt+1
+        M[1,i] = res1[i].x
+        M[2,i] = res1[i].y
+        M[3,i] = res1[i].z
+        M[4,i] = res2[i].x
+        M[5,i] = res2[i].y
+        M[6,i] = res2[i].z
+    end
+    writedlm(fname, M)
 end
 
 function plot_lorenz_grad(; fname=joinpath(dirname(dirname(@__DIR__)), "paper/lorenz_grad"))

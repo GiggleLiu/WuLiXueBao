@@ -11,7 +11,7 @@ end
 end
 
 # test case, θ = (10, 27, 8/3)
-function lorenz(t, y, θ)
+@inline function lorenz(t, y, θ)
     σ, ρ, β = θ
     P3(σ*(y.y-y.x), y.x*(ρ-y.z)-y.y, y.x*y.y-β*y.z)
 end

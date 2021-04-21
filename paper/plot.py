@@ -7,6 +7,8 @@ from scipy import optimize, special
 import json
 from matplotlib.font_manager import FontProperties
 from fontTools.ttLib import TTFont
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.gridspec as gridspec
 ChineseFont2 = FontProperties(fname='/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf')
 font = TTFont("/usr/share/fonts/truetype/wqy/wqy-microhei.ttc", fontNumber=0)
 font.save("wqy-microhei.ttc")
@@ -115,25 +117,37 @@ class PLT(object):
                 edge >> (si, n4s[i])
 
     def fig4(self, tp='pdf'):
+        fname_line="./lorenz_line.dat"
         fname="./lorenz_grad"
-        with DataPlt(filename="fig4.%s"%tp, figsize=(6,4)) as dp:
+        with DataPlt(filename="fig4.%s"%tp, figsize=(8,4)) as dp:
+            gs = gridspec.GridSpec(ncols=22, nrows=10)
+            ax = plt.subplot(gs[1:9,:10])
+            cornertex("(a)", ax, offset=(0,0.18))
             mg = np.loadtxt(fname + "_heatmap.dat")
-            vmin, vmax = -5, 15
-            mg[mg<10**vmin] = 10**vmin
-            mg[mg>10**vmax] = 10**vmax
+            #vmin, vmax = -5, 15
+            #mg[mg<10**vmin] = 10**vmin
+            #mg[mg>10**vmax] = 10**vmax
             curve = np.loadtxt(fname + "_curve.dat")
             σs = np.linspace(0,20,mg.shape[0])
             rhos = np.linspace(0,50,mg.shape[1])
 
-            ax = plt.pcolormesh(σs, rhos, np.log10(mg).T, shading="auto", vmin=vmin-0.1, vmax=vmax+0.1, cmap='inferno')
+            #ax = plt.pcolormesh(σs, rhos, np.log10(mg).T, shading="auto", vmin=vmin-0.1, vmax=vmax+0.1, cmap='inferno')
+            ax = plt.pcolormesh(σs, rhos, mg.T, shading="auto", cmap='inferno', vmin=1e-5, vmax=1e15, norm=matplotlib.colors.LogNorm())
+            plt.colorbar()
+            plt.scatter([10.0], [27.0], color="C0", s=20, lw=1, edgecolor='none')
+            plt.scatter([10.0], [15.0], color="C1", s=20, lw=1, edgecolor='none')
             ax.set_edgecolor('face')
             plt.ylim(0,50)
             plt.xlim(0,20)
             curve[σs < 4] = 51
             plt.plot(σs, curve, color="black", lw=2, label="theoretical")
-            plt.colorbar()
             plt.xlabel(r"$\sigma$")
             plt.ylabel(r"$\rho$")
+            ax = plt.subplot(gs[:,11:], projection='3d')
+            mg = np.loadtxt(fname_line)
+            ax.plot(mg[0,:], mg[1,:], mg[2,:], label="not stable", lw=1, color="C0")
+            ax.plot(mg[3,:], mg[4,:], mg[5,:], label="stable", lw=1, color="C1")
+            ax.text2D(0.05, 0.95, "(b)", transform=ax.transAxes, fontsize=16)
             plt.legend()
             plt.tight_layout()
 

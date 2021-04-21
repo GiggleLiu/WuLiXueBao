@@ -109,7 +109,7 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
 %一个很好的描述它与狭义自动微分区别的例子是，当将两个复数相加，广义的自动微分看到的是实部相加和虚部相加这两个操作，而狭义自动微分则需要推导适用于复变函数的Wirtinger导数~\cite{Hirose2003}。
    本文将会介绍共轭态方法，前向自动微分以及基于最优检查点算法和可逆计算的后向自动微分等自动微分方法在处理物理模拟问题中的应用，对比不同方法的优劣以及适用的场景。
 章节\ref{sec:forwardbackward}~ 介绍了几种自动微分方法的基本理论，尤其是关于如何在反向自动微分中权衡程序的运行时间和空间。
-章节\ref{sec:applications}~ 介绍了不同自动微分技术在地震波模拟过程中的应用。
+章节\ref{sec:applications}~ 介绍了不同自动微分技术在波的传播模拟中的应用。
 
 \section{自动微分方法}\label{sec:forwardbackward}
 
@@ -306,25 +306,38 @@ $$\texttt{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 其二是用最基于最优检查点算法和Bennett算法的后向微分对参数较多且内存消耗巨大的地震学模拟的求导。
 
 \subsection{洛伦茨方程求解}
-洛伦茨系统是人们研究混沌的经典模型，它描述了一个三维空间中一个坐标点$(x,y,z)$的动力学。该动力学满足洛伦茨方程
+洛伦茨系统~\cite{Lorenz1963}是人们研究混沌的经典模型，它描述了一个定义在三维空间中的动力学
 \begin{align*}
     \frac{\D x}{\D t} &= \sigma(y - x),\\
     \frac{\D y}{\D t} &= x(\rho -z) - y,\\
     \frac{\D z}{\D t} &= xy-\beta z.
 \end{align*}
-其中，$\sigma$, $\rho$和$\beta$为三个控制参数，理论上，当$\rho < \sigma \frac{\sigma + \beta + 3}{\sigma - \beta - 1}$时，系统处于稳定状态。数值模拟中，我们用Runge-Kutta方法对时间部分积分并得到末了位置，我们固定初始位置$(x_0,y_0,z_0) = (1, 0, 0)$以及控制参数$\beta=8/3$，积分时间区间为$[0,T=30]$，积分步长为$3\times 10^{-3}$。
-末了位置坐标对控制参数和初始坐标的导数反映了末态对控制参数和初始位置的敏感度，它一定程度的反映了浑沌现象。
-我们可以用前向自动微分求出终了$x$坐标对初始位置和控制参数的导数$(\frac{\partial x_T}{\partial x_0}, \frac{\partial x_T}{\partial y_0}, \frac{\partial x_T}{\partial z_0})$和$(\frac{\partial x_T}{\partial\sigma}, \frac{\partial x_T}{\partial\rho}, \frac{\partial x_T}{\partial\beta})$的绝对值的平均，并把它们与初始$\rho,\sigma$的关系画在图~\ref{fig:chaos}中。可以看出处于稳定区间（黑线下方）的导数远小于混沌区间（黑线上方）的导数，分界点和理论预言基本一致。
+其中，$\sigma$, $\rho$和$\beta$为三个控制参数。该系统的含时演化的曲线如图~\ref{fig:chaos}所示，它在$\rho>1$时会有两个吸引子~\cite{Hirsch2012}。仅当$\rho > \sigma \frac{\sigma + \beta + 3}{\sigma - \beta - 1}$时才会出现粒子稳定的围绕其中一个吸引子运动的情况（图中橘色曲线），这时候系统较为稳定并表现处对初值较为不敏感的特点。末了位置坐标对控制参数和初始坐标的导数反映了末态对控制参数和初始位置的敏感度，它一定程度的反映了浑沌现象。
+在数值模拟中，我们用4阶Runge-Kutta方法对时间部分积分并得到末了位置，我们固定初始位置$(x_0,y_0,z_0) = (1, 0, 0)$以及控制参数$\beta=8/3$，积分时间区间为$[0,T=30]$，积分步长为$3\times 10^{-3}$。
+由于该过程所含参数仅有6个，包括初始位置的三个坐标$(x_0, y_0, z_0)$和三个控制参数$(\sigma, \rho,\beta)$，因此用前向自动微分工具ForwardDiff~\cite{Revels2016}求导比起后向自动微分有很大优势。我们把导数的绝对值的平均与初始$\rho,\sigma$的关系画在图~\ref{fig:chaos}中。可以看出的确只有在理论预言的黑线下方才会有稳定的吸引子，它对应了较小的导数或初值依赖性。
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.6\columnwidth]{./fig4.pdf}
-    \caption{Lorenz系统的初始位置和控制参数的导数的大小与系统出现混沌的关系。\label{fig:chaos}} 
+\includegraphics[width=0.8\columnwidth]{./fig4.pdf}
+    \caption{Lorenz系统的初始位置和控制参数的导数的大小与系统出现稳定吸引子的关系。(a) 为固定$\beta=8/3$，梯度大小与$\rho$和$\sigma$的关系。图中颜色代表了平均梯度大小，黑线是理论上会不会存在稳定吸引子分界线。(b) 中的蓝色和黄色的线分别对应 (a) 图标识的蓝点参数 $(\sigma=10, \rho=27)$ 和黄点参数$(\sigma=10, \rho=15)$ 处的动力学模拟。\label{fig:chaos}} 
 \end{figure}
 
-由于这里的参数较少，所以前向自动微分可以做到几乎没有额外时间和空间开销的严格求导。
-共轭态法求导理论上也可以做到无额外内存消耗，但是会引入由于积分器不可逆带来的系统误差。我们以前向自动微分的导数是严格的导数作为基准，把共轭态法求得的导数的$l^2$相对误差与积分步长的关系绘制于图~\ref{fig:neuralode-error} (a)中，相对误差随着积分步长指数增加。
-因此，我们需要每隔一段积分，就设置一个检查点重新加载严格的导数。图 (b) 显示检查点越密，误差越小，消耗的额外空间也越多。检查点越稀疏，则误差越大，消耗的额外空间越少。
+表~\ref{tbl:lorenztiming}对比了不同方法的时间和空间的消耗，可以看到前向自动微分所用的时间仅为原代码的不到2倍。这里的高效来自ForwardDiff中允许一次对多个变量求导，代价是用了正比于参数数目倍数的空间。虽然没有改变随着求导变量数目增加，计算复杂度线性增加的本质，但是减少了线性部分的系数，对处理实际问题很有帮助。
+基于可逆计算的反向自动微分库NiLang~\cite{Liu2020b}需的计算时间为原计算的约3.5倍，其中包含了前向计算和反向传播过程，因此这个速度并不算差。但是由于4阶Runge-Kutta方法不可逆，在不利用额外的计算时间交换空间的情况下，需要缓存每一步的计算以保证可逆性，因此要求有$10^4$倍于状态大小的缓存空间。好在该问题的单个状态空间仅有三个维度，不作任何缓存求导仍然可能。
+共轭态法求导理论上也可以做到无额外内存消耗，但是它会引入由于积分器不可逆带来的系统误差，它对于研究混沌问题非常致命，使得实际求导中经常出现梯度为NaN (非良好定义的数字) 的情况，因此我们不得不引入检查点来避免积分误差累积。我们以前向自动微分的导数是严格的导数作为基准，把共轭态法求得的导数的$l^2$相对误差与积分步长的关系绘制于图~\ref{fig:neuralode-error} (a)中，相对误差随着积分步长指数增加。
+因此，我们需要每隔一段积分，就设置一个检查点重新加载正确的坐标。图 (b) 显示检查点越密，误差越小，消耗的额外空间也越多。最终的模拟中，我们选择了检查点步长为200，对应检查点数目为50。
+
+\begin{table}\centering
+    \begin{tabularx}{0.7\textwidth}{Xcccc}\toprule
+        方法 & Julia & ForwardDiff & NiLang & Neural ODE + NiLang\\
+        \hline
+        时间          & 1.90ms   &  2.88ms & 6.70ms & 34.3ms\\  % 2.79ms for pure reversible
+        空间（估计）          & 1   &  6 & $10^4$ & 50\\  % 2.79ms for pure reversible
+        \bottomrule
+    \end{tabularx}
+    \caption{对Lorenz系统的自动微分时间和空间对比，其中空间部分以状态数目为单位。
+    其中NeuralODE中单步计算的微分利用了可逆计算自动微分，每隔200步设置检查点。}\label{tbl:lorenztiming}
+\end{table}
 
 \begin{figure}[t]
 \centering
@@ -334,9 +347,8 @@ $$\texttt{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 
 
 \vskip 1.55\baselineskip
-\subsection{地震波的模拟}
-Convolutional Perfectly matched layer (C-PML)~\cite{Roden2000,MaKoEz08}方程是模拟波在无限大介质中运动的一种准确可靠的方案，
-在介质中，波场$u(\vec x, t)$的传播可描述为
+\subsection{波的传播方程的微分}
+考虑由如下方程决定的波函数$u(x_1, x_2, t)$在非均匀二维介质中的传播过程
 \begin{align}
     \begin{cases}
     u_{tt} - \nabla\cdot(c^2\nabla u) = f & t>0,\\
@@ -344,10 +356,20 @@ Convolutional Perfectly matched layer (C-PML)~\cite{Roden2000,MaKoEz08}方程是
     u_t = v_0 & t=0.
     \end{cases}
 \end{align}
-经过对空间的离散化处理
-后来在地震学的模拟中，它被用来微分地震波传播的过程~\cite{Symes2007}。
-自动微分也在其中发挥着重要的作用~\cite{Zhu2020}。
-~\cite{Grote2010}
+其中$c$为波在介质中的传播速度。理想匹配层 (PML)~\cite{Berenger1994,Roden2000,MaKoEz08}是模拟波在介质中运动的一种准确可靠的方案，
+为了在有限尺寸进行模拟该动力学，PML方法引入了吸收层防止边界的影响。引入辅助场并对空间和时间进行离散化后，上述方程可变形为如下数值计算过程
+\begin{align}
+    \begin{cases}
+        u^{n+1}_{i,j} \approx &\frac{\Delta t^2}{1+(\zeta_{1i}+\zeta_{2j})\Delta t/2}\bigg(
+        \left(2-\zeta_{1i}\zeta_{2j}\right)u_{i,j}^n - \frac{1-(\zeta_{1i}+\zeta_{2j})\Delta t/2}{\Delta t^2}u^{n-1}_{i,j}\\
+        &+ c_{i,j}^2\frac{u_{i+1,j}^n-2u_{i,j}^n+u_{i-1,j}^n}{\Delta x^2} + c_{i,j}^2\frac{u_{i,j+1}^n-2u_{i,j}^n+u_{i,j-1}^n}{\Delta y^2}\\
+        &+ \frac{(\phi_x)_{i+1,j}-(\phi_x)_{i-1,j}}{2\Delta x} + \frac{(\phi_y)_{i,j+1}-(\phi_y)_{i,j-1}}{2\Delta y}\bigg)\\
+        (\phi_x)_{i,j}^{n+1} =& (1-\Delta t \zeta_{1i})(\phi_x)_{i,j}^n + \Delta t c_{i,j}^2 (\zeta_{1i}-\zeta_{2j})\frac{u_{i+1,j}-u_{i-1,j}}{2\Delta x}\\
+        (\phi_y)_{i,j}^{n+1} =& (1-\Delta t \zeta_{2j})(\phi_y)_{i,j}^n + \Delta t c_{i,j}^2 (\zeta_{2j}-\zeta_{1i})\frac{u_{i,j+1}-u_{i,j-1}}{2\Delta y}
+    \end{cases}
+\end{align}
+这里的第一项为近似，因为它忽略了原式子中介质传播速度$c$的梯度项的贡献。$\zeta_1$和$\zeta_2$分别是$x$和$y$方向的衰减系数，$\phi_x$和$\phi_y$分别为引入的辅助场的$x$和$y$方向的分量。该方程的详细推导可参考文献~\cite{Grote2010}。
+自动微分应用于PML求解在地震学中有着重要的应用~\cite{Zhu2020}，而且人们很早就认识到检查点方案可以用于地震波模拟中~\cite{Symes2007}来让回溯中间状态的内存需求大大减少。
 
 \begin{figure}[t]
 \centering
