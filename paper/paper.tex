@@ -20,6 +20,7 @@
 \usepackage[spaces,hyphens]{url}
 \usepackage[colorlinks,allcolors=blue]{hyperref}
 \usepackage[numbers]{natbib}
+\usepackage{multicol}
 \renewcommand{\algorithmcfname}{算法}
 \SetKwInput{KwInput}{输入}
 \SetKwInput{KwResult}{输出}
@@ -74,7 +75,35 @@
 %\apscopyright \baselineskip=16.0pt plus.2pt minus.2pt
 %\begin{multicols}{2}\sec
 \vskip 0.55\baselineskip
+
+
+\section{名~~词~~表}
+\begin{multicols}{2}
+\begin{description}
+\setlength\itemsep{-0.5em}
+    \item[对偶量] adjoint
+    \item[核函数] kernel function
+    \item[原子函数] primitive function
+    \item[可逆计算] reversible computing
+    \item[可逆编程] reversible programming
+    \item[鹅卵石游戏] pebble game
+    \item[共轭态法] adjoint state method
+    \item[自动微分] automatic differentiation (AD)
+    \item[前向自动微分] forward mode AD
+    \item[后向自动微分] reverse mode AD
+    \item[地震学] seismic
+    \item[检查点] checkpoint
+    \item[拓展动力学] augmented dynamics
+    \item[损失] loss
+    \item[对偶量] adjoint
+    \item[地震学] seismic
+    \item[控制流] control flow
+\end{description}
+\end{multicols}
+
 \section{引~~~~言}
+
+
     自动微分是指自动获取一段计算机程序导数的技术，很多人对它的了解源自它在机器学习中的成功应用，人们可以用它优化带有千亿计参数的神经元网络~\cite{Rosset2019}。
 与很多人印象不同的是，自动微分其实是个很古老的技术。
 Nolan早在他1953年的博士论文中就提出过计算机自动化求导的构想~\cite{Nolan1953}，
@@ -87,8 +116,8 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
 这些微分方程的常见的求解方法是先将问题的时空坐标离散化，并以数值积分的形式完成求解。离散化后的网格对存储空间和计算时间的需求很大，同时，机器学习中主流的后向自动微分需要很多的额外的空间缓存运算中间结果，因此人们经常无法直接使用主流自动微分库，比如Jax~\cite{James2018}, PyTorch~\cite{Paszke2019}等对具有一定规模的实际物理模拟问题求导。
 一种传统的解决常微分方程求导的方案叫做共轭态法~\cite{Plessix2006,Chen2018}，它假设了在较短时间内积分器可逆，并通过逆向积分来帮助自动微分回溯状态。
 事实上，除了Leap frog等少数积分器在时间反演不变的哈密顿量问题中可以做到时间反演对称，大多数的积分器并不能保证严格可逆，所以共轭态法往往存在由积分步长带来的系统性误差。
-后来，有人把机器学习中的最优检查点算法带入到了物理模拟的状态回溯中~\cite{Symes2007}，仅在对数的额外时间和空间开销下避免了系统误差。也有一些人利用基于源代码变换和检查点算法~\cite{Griewank1992}的自动微分编译器，如Tapenade~\cite{Hascoet2013}, OpenAD~\cite{Utke2008}和TAF~\cite{Heimbach2005}等工具对物理模拟过程微分~\cite{Forget2015}。
-还有一类可以对后向自动微分做时间和空间交换的算法是可逆计算中的Bennett算法。可逆计算在近几年中开始被用作全编程语言的微分的方案~\cite{Liu2020b}，它提供了传统自动微分框架所不具有的内存控制的灵活性，因此可以被用来微分GPU设备函数，复杂的控制流等。过去的研究得出最优的检查点算法可以仅用对数于计算步骤数的额外时间和空间开销对任意代码微分，而可逆的Bennett算法也可以做到对数的额外空间开销，但是对应的时间额外开销为多项式。
+后来，有人把机器学习中的最优检查点算法带入到了物理模拟的状态回溯中~\cite{Symes2007}，仅在对数的额外时间和空间开销下避免了系统误差。也有一些人利用基于源代码变换和检查点算法~\cite{Griewank1992,Forget2015}的自动微分编译器，如Tapenade~\cite{Hascoet2013}, OpenAD~\cite{Utke2008}和TAF~\cite{Heimbach2005}等工具对物理模拟过程微分。
+还有一类可以对后向自动微分做时间和空间交换的算法是可逆计算中的Bennett算法。可逆计算在近几年中开始被用作全编程语言的微分的方案~\cite{Liu2020b}，它提供了传统自动微分框架所不具有的内存控制的灵活性，因此可以被用来微分GPU核函数，复杂的控制流等。过去的研究得出最优的检查点算法可以仅用对数于计算步骤数的额外时间和空间开销对任意代码微分，而可逆的Bennett算法也可以做到对数的额外空间开销，但是对应的时间额外开销为多项式。
 
    本文将会回顾共轭态方法，前向自动微分以及基于最优检查点算法和可逆计算的后向自动微分等自动微分方法在处理物理模拟问题中的应用，并对比不同方法的优劣以及适用的场景。
 章节\ref{sec:forwardbackward}~ 介绍了几种自动微分方法的基本理论。
@@ -122,7 +151,7 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
     \KwResult{$\frac{\partial \mathcal{L}}{\partial s_0}$, $\frac{\partial \mathcal{L}}{\partial \theta}$}
         \Fn{\rm aug\_dynamics(($s$, $a$, -), $t$, $\theta$)}{$q=f(s, t, \theta)$ \Comment*[r]{定义拓展动力学函数} \textbf{return} ($q$, $-a^T\frac{\partial q}{\partial s}$, $-a^T\frac{\partial q}{\partial \theta}$)}
         $S_0$ = ($s_n$, $\frac{\partial \mathcal{L}}{\partial s_n}$, $0$) \Comment*[r]{计算拓展动力学函数的初始状态}
-        ($s_0$, $\frac{\partial \mathcal{L}}{\partial s_0}$, $\frac{\partial \mathcal{L}}{\partial \theta}$) = ODESolve(aug\_dynamics, $S_0$, $t_n$, $t_0$, $\theta$) \Comment*[r]{对拓展动力学反向积分}
+        ($s_0$, $\frac{\partial \mathcal{L}}{\partial s_0}$, $\frac{\partial \mathcal{L}}{\partial \theta}$) = ODESolve(aug\_dynamics, $S_0$, $\theta$, $t_n$, $t_0$) \Comment*[r]{对拓展动力学反向积分}
     \caption{共轭态法}\label{alg:adjointstate}
 \end{algorithm}
 
@@ -136,7 +165,7 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
     \begin{figure}[t]
         \centering
         \includegraphics[width=0.9\columnwidth,trim={0 0cm 0 0},clip]{fig3.pdf}
-        \caption{常微分方程程序中对状态的 (a) 前向自动微分和 (b) 后向自动微分过程。其中圆圈为缓存的变量，线条上的箭头代表运算的方向。}\label{fig:autodifftypes}
+        \caption{物理模拟程序中对状态的 (a) 前向自动微分和 (b) 后向自动微分过程。其中线条上的箭头代表运算的方向，圆圈为后向自动微分中缓存的变量。}\label{fig:autodifftypes}
 \end{figure}
 数学中，在对一个输入变量$p$求导时，会让它携带一个无穷小量$\D p$，并通过对这个无穷小量的运算完成对程序的求导。比如当作用函数$f$时，会有如下链式法则
 \begin{align}
@@ -169,7 +198,7 @@ $$\dot{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 \begin{align*}
     \overline f_p: (\overline x, \overline y) \mapsto (\overline x + \overline y\frac{\partial y}{\partial x}, \overline y)
 \end{align*}
-其中，$\frac{\partial y}{\partial x}$为局域雅可比矩阵，它的数值不需要具体计算出来，而是通过后向传播函数实现。根据软件包的实现不同，这些原子函数可以是Tapenade和NiLang~\cite{Liu2020b}那样仅包含有限个基础标量指令，也可以是向Jax和Pytorch中那样的可拓展的常用函数集合。
+其中，$\frac{\partial y}{\partial x}$为局域雅可比矩阵，它的数值不需要具体计算出来，而是通过后向传播函数实现。根据实现不同，这些原子函数可以是Tapenade和NiLang~\cite{Liu2020b}那样仅包含有限个基础标量指令，也可以是向Jax和Pytorch中那样的可拓展的常用函数集合。
 用户将程序表示为原子函数的组合，在前向计算中，计算机将遇到的原子函数的后向传播函数连同所需的中间变量一起存放在堆栈中\footnote{除了堆栈方案，也有一些软件包通过静态编译等手段的实现状态回溯。}，并在反向传播中按照后进先出的顺序调用，这样代码便可以利用上述导数回传规则更新对偶量。
 具体到求解常微分方程的自动微分过程中，其反向传播过程如图~\ref{fig:autodifftypes} (b) 所示，可以形式化的表达为
 
@@ -246,7 +275,7 @@ $$\dot{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
         \filldraw[fill=black] (\x+\dx,\y) circle [radius=0.1];
     \draw (2.5+\dx,-3.3) node {(b)};
 \end{tikzpicture}
-    \caption{(a) 检查点方案和 (b) 可逆计算方案中避免缓存的方式。图中黑箭头为正常计算过程，红箭头为梯度回传过程，蓝箭头为梯度回传和反计算的复合过程，箭头上的数字代表了执行顺序。黑色和白色的圆点为被缓存和未被缓存 (或被反计算消除) 的状态。}\label{fig:tradeoff-both}
+    \caption{(a) 检查点方案和 (b) 反计算方案避免缓存全部中间状态。图中黑箭头为正常计算过程，红箭头为梯度回传过程，蓝箭头为梯度回传和反向计算的复合过程，箭头上的数字代表了执行顺序。黑色和白色的圆点为被缓存和未被缓存 (或通过反计算消除) 的状态。}\label{fig:tradeoff-both}
 \end{figure}
 
 
@@ -269,7 +298,7 @@ $$\dot{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
         基于可逆计算的后向自动微分   &  $\bigO(T^{1+\epsilon})$ & $\bigO(S\log T)$ \\
         \bottomrule
     \end{tabularx}
-    \caption{不同方案的时间与空间复杂度。共轭态法考虑了缓存部分中间结果以保证反向积分的正确性，因此空间会有与时间线性增长。前向自动微分时间复杂度中的$N$代表了需要求导的参数个数。可逆计算中的多项式时间复杂度中的$\epsilon > 0$。} \label{tbl:complexity}
+    \caption{不同自动微分方案中，时间与空间复杂度的关系。这里共轭态法考虑了缓存部分中间结果以保证反向积分的正确性，因此空间会有与时间线性增长。前向自动微分时间复杂度中的$N$代表了需要求导的参数个数。可逆计算中的多项式时间复杂度中的$\epsilon > 0$。} \label{tbl:complexity}
 \end{table}
 
 
@@ -285,13 +314,13 @@ $$\dot{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
     \frac{\D y}{\D t} &= x(\rho -z) - y,\\
     \frac{\D z}{\D t} &= xy-\beta z.
 \end{align*}
-其中，$\sigma$, $\rho$和$\beta$为三个控制参数。该系统的含时演化的曲线如图~\ref{fig:chaos}所示。在$\rho>1$时，系统有两个吸引子~\cite{Hirsch2012}，但仅当$\rho > \sigma \frac{\sigma + \beta + 3}{\sigma - \beta - 1}$时才会出现粒子稳定的围绕其中一个吸引子运动的情况（图 (b) 中橘色曲线），这时候系统较为稳定并表现处对初值较为不敏感的特点。
+其中，$\sigma$, $\rho$和$\beta$为三个控制参数。该系统的含时演化的曲线如图~\ref{fig:chaos}所示。在$\rho>1$时，系统有两个吸引子~\cite{Hirsch2012}，但仅当$\rho < \sigma \frac{\sigma + \beta + 3}{\sigma - \beta - 1}$时才会出现图 (b) 中橘色曲线所示的粒子稳定的围绕其中一个吸引子运动的情况，这时候系统较为稳定并表现处对初值较为不敏感的特点。
 在数值模拟中，我们用4阶Runge-Kutta方法对时间部分积分并得到末了位置，我们固定初始位置$(x_0,y_0,z_0) = (1, 0, 0)$以及控制参数$\beta=8/3$，积分时间区间为$[0,T=30]$，积分步长为$3\times 10^{-3}$。我们用不同的自动微分方法求末了位置坐标对控制参数和初始坐标的导数，它反映了末态对控制参数和初始位置的敏感度，在一定程度的反映了系统出现了浑沌现象。
 由于该过程所含参数仅有6个，包括初始位置的三个坐标$(x_0, y_0, z_0)$和三个控制参数$(\sigma, \rho,\beta)$，因此用前向自动微分工具ForwardDiff~\cite{Revels2016}求导比起后向自动微分有很大优势。我们把导数的绝对值的平均与初始$\rho,\sigma$的关系画在图~\ref{fig:chaos}中。可以看出的确只有在理论预言的黑线下方才会有稳定的吸引子，它对应了较小的导数（或初值依赖性）。
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.8\columnwidth]{./fig4.pdf}
-    \caption{Lorenz系统的初始位置和控制参数的导数的大小与系统出现稳定吸引子的关系。(a) 为固定$\beta=8/3$，梯度大小与$\rho$和$\sigma$的关系。图中颜色代表了平均梯度大小，黑线是理论上会不会存在稳定吸引子分界线。(b) 中的蓝色和黄色的线分别对应 (a) 图标识的蓝点参数 $(\sigma=10, \rho=27)$ 和黄点参数$(\sigma=10, \rho=15)$ 处的动力学模拟。\label{fig:chaos}}
+    \caption{(a) Lorenz系统中固定参数$\beta=8/3$，梯度大小与参数$\rho$和$\sigma$的关系。图中颜色代表了平均梯度大小，黑线是理论上会不会存在稳定吸引子分界线。(b) 中的蓝色和黄色的线分别对应 (a) 图标识的蓝点处参数 $(\sigma=10, \rho=27)$ 和黄点处参数$(\sigma=10, \rho=15)$ 对应的动力学模拟。\label{fig:chaos}}
 \end{figure}
 表~\ref{tbl:lorenztiming}对比了不同方法的时间和空间的消耗，可以看到前向自动微分所用的时间仅为原代码的不到2倍。这里的高效来自ForwardDiff中允许一次对多个变量求导，代价是用了正比于参数数目倍数的空间。该技术虽然没有改变随着输入变量数目增加，计算复杂度线性增加的本质，但是减少了线性部分的系数，对处理实际问题很有帮助。
 基于可逆计算的后向自动微分库NiLang~\cite{Liu2020b}需的计算时间为原计算的约3.5倍，其中包含了前向计算和反向传播过程，因此这个速度并不算差。但是由于4阶Runge-Kutta方法不可逆，在不利用额外的计算时间交换空间的情况下，需要缓存每一步的计算以保证可逆性，因此要求有$10^4$倍于状态大小的缓存空间。好在该问题的单个状态空间仅有三个维度，不作任何缓存求导仍然很容易。
@@ -306,14 +335,14 @@ $$\dot{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
         空间 (估计)          & 1   &  6 & $10^4$ & 50\\  % 2.79ms for pure reversible
         \bottomrule
     \end{tabularx}
-    \caption{对Lorenz系统的自动微分时间和空间对比，其中空间部分以状态数目为单位。
-    其中NeuralODE中单步计算的微分利用了可逆计算自动微分，每隔200步设置检查点。}\label{tbl:lorenztiming}
+    \caption{不同方法对Lorenz系统的微分所需时间和空间，其中空间部分以状态数目为单位。
+    这里，NeuralODE中单步计算的微分由NiLang完成，检查点的步长为200步。}\label{tbl:lorenztiming}
 \end{table}
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.6\columnwidth]{./fig2.pdf}
-    \caption{利用共轭态方法求导时，$l^2$误差与积分步长的关系。其中一个点代表了在该步长下，对$100$个随机初始点计算得到的中位数。缺失的数据代表该处出现数值溢出的情况。\label{fig:neuralode-error}}
+    \caption{(a) 利用共轭态方法对$\rho=27, \sigma=10, \beta=8/3$的Lorenz系统求导时，相对$l^2$误差与积分步数的关系。其中一个点代表了在该步长下，对$100$个随机初始点计算得到的中位数，缺失的数据代表该处出现数值溢出。 (b) 每隔固定步长设置检查点后，$10^4$步积分的误差。\label{fig:neuralode-error}}
 \end{figure}
 
 
@@ -322,9 +351,9 @@ $$\dot{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 考虑由如下方程决定的波函数$u(x_1, x_2, t)$在非均匀二维介质中的传播过程
 \begin{align}
     \begin{cases}
-    u_{tt} - \nabla\cdot(c^2\nabla u) = f & t>0,\\
+    \frac{\D^2 u}{\D t^2} - \nabla\cdot(c^2\nabla u) = f & t>0,\\
     u = u_0 & t=0,\\
-    u_t = v_0 & t=0.
+    \frac{\D u}{\D t} = v_0 & t=0.
     \end{cases}
 \end{align}
 其中$c$为波在介质中的传播速度。理想匹配层 (PML)~\cite{Berenger1994,Roden2000,MaKoEz08}是模拟波在介质中运动的一种准确可靠的方案，
@@ -339,13 +368,13 @@ $$\dot{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
         (\phi_y)_{i,j}^{n+1} =& (1-\Delta t \zeta_{2j})(\phi_y)_{i,j}^n + \Delta t c_{i,j}^2 (\zeta_{2j}-\zeta_{1i})\frac{u_{i,j+1}-u_{i,j-1}}{2\Delta y}
     \end{cases}
 \end{align}
-这里的第一项为近似，因为它忽略了原式中介质传播速度$c$的空间梯度项的贡献。$\zeta_1$和$\zeta_2$分别是$x$和$y$方向的衰减系数，$\phi_x$和$\phi_y$分别为引入的辅助场的$x$和$y$方向的分量。该方程的详细推导可参考文献~\cite{Grote2010}。
+这里的第一项为近似，因为它忽略了原式中介质传播速度$c$的空间梯度项的贡献。$\zeta_1$和$\zeta_2$分别是$x$和$y$方向的衰减系数，$\phi_x$和$\phi_y$分别为引入的辅助场的$x$和$y$方向的分量，$\Delta x$, $\Delta y$和$\Delta t$分别是空间和时间的离散化参数。该方程的详细推导可参考文献~\cite{Grote2010}。
 自动微分应用于PML求解在地震学中有着重要的应用~\cite{Zhu2020}，而且人们很早就认识到检查点方案可以用于地震波模拟中~\cite{Symes2007}来让回溯中间状态的内存需求大大减少。
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.6\columnwidth]{./fig5.pdf}
-    \caption{对比纯可逆计算的Bennett算法的时间和空间开销和Treeverse算法结合可逆计算的性能，其中图中标记的数字为函数的前向运行次数，在Bennett算法中，后向运行次数和前向运行次数一样，而Treeverse算法中，反向传播的次数固定为$10^4$。横轴的空间的数值的实际含义为检查点的数目或可逆计算中的最高状态数。\label{fig:seismic}}
+    \caption{Bennett算法和Treeverse算法实际应用与PML求解过程的微分的时间与空间开销，其中图中标记的数字为函数的前向运行次数，在Bennett算法中，后向运行次数和前向运行次数一样，而Treeverse算法中，反向传播的次数固定为$10^4$。横轴的空间的数值的实际含义为检查点的数目或可逆计算中的最大状态数。\label{fig:seismic}}
 \end{figure}
 
 在数值模拟中，我们用双精度浮点数模拟了$1000 \times 1000$的二维格点上的PML方程求解，每个状态要存储4个矩阵$s_n = \{u^{n-1}, u^n, \phi_x^n, \phi_y^n\}$，占用存储空间为32MB。
@@ -355,7 +384,7 @@ $$\dot{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 Bennett算法可以用纯可逆计算来实现，它在可逆计算的意义下是最优的时空交换策略，但显然对普通硬件并不是最优的。
 Treeverse+NiLang的方案是指用可逆计算处理单步运算的微分，同时用Treeverse算法处理步骤间的微分。这里随着检查点数目的减少，计算时间的减少并不明显。这是因为增加的计算时间是前向计算，而这里单步后向计算梯度的时间是前向时间的二十多倍，因此即使仅用5个检查点，额外的增加的时间也不到一倍。
 这里单步计算梯度的之所比前向计算慢很多是当使用NiLang微分并行运行的GPU核函数，必须要避免变量的共享读取以避免程序在后向计算中同时并行更新同一块内存的梯度，这些额外的设计带来了很多倍性能的损失。与此对比，在单线程版本的CPU上，前向和后向的单步运算时间差距在四倍以内。
-此外，虽然Treeverse算法在可以做到高效的时间和空间的交换，但由于内存的管理需要用到系统内存中的全局堆栈，无法直接用于微分GPU的kernel函数，而可逆计算则非常适合这种非线性且具有一定可逆性的程序，这也是为什么这里选择用可逆计算对单步运算求导来避免手动求导GPU设备函数的麻烦。
+此外，虽然Treeverse算法在可以做到高效的时间和空间的交换，但由于内存的管理需要用到系统内存中的全局堆栈，无法直接用于微分GPU的kernel函数，而可逆计算则非常适合这种非线性且具有一定可逆性的程序，这也是为什么这里选择用可逆计算对单步运算求导来避免手动求导GPU核函数的麻烦。
 
 %\section{总结}
 %本文展示了几种自动微分方案，包括前向自动微分，后向自动微分和专门针对常微分方程的共轭态法。
@@ -386,29 +415,8 @@ Treeverse+NiLang的方案是指用可逆计算处理单步运算的微分，同�
 %感谢彩云天气CTO苑明理老师的讨论。
 
 
-\section*{名词表}
-
-\begin{description}
-    \item[对偶量] adjoint
-    \item[设备函数] device function
-    \item[可逆计算] reversible computing
-    \item[可逆编程] reversible programming
-    \item[鹅卵石游戏] pebble game
-    \item[共轭态法] adjoint state method
-    \item[前向自动微分] forward mode automatic differentiation
-    \item[后向自动微分] reverse mode automatic differentiation
-    \item[地震学] seismic
-    \item[原子函数] primitive function
-    \item[检查点] checkpoint
-    \item[拓展动力学] augmented dynamics
-    \item[损失] loss
-    \item[对偶量] adjoint
-    \item[地震学] seismic
-    \item[控制流] control flow
-\end{description}
-
 \section{附录1：时间与空间的交换，鹅卵石游戏}\label{sec:pebblegame}
-一个定义在一维格子上的单人游戏。鹅卵石游戏最初被提出描述可逆计算中的时间与空间的交换关系。游戏开始时，玩家拥有一堆鹅卵石以及一个一维排布的$n$个格子，标记为$0,1,2\ldots n$，并且在$0$号格子上有一个预先布置的鹅卵石。
+鹅卵石游戏是一个定义在一维格子上的单人游戏。它最初被提出描述可逆计算中的时间与空间的交换关系。游戏开始时，玩家拥有一堆鹅卵石以及一个一维排布的$n$个格子，标记为$0,1,2\ldots n$，并且在$0$号格子上有一个预先布置的鹅卵石。
 其规则为
 \begin{tcolorbox}[width=\textwidth, title=鹅卵石游戏-可逆计算版本]
     \setstretch{1.5}
@@ -451,7 +459,7 @@ Treeverse+NiLang的方案是指用可逆计算处理单步运算的微分，同�
 \begin{align}\label{eq:rev}
     T = (2k-1)^l, S = l(k-1)+1.
 \end{align}
-其中，$k$与$l$满足$n = k^l$。可以看出可逆计算的时间复杂度和原时间为多项式关系。
+其中，$k$与$l$满足总格子数$n = k^l$。可以看出可逆计算的时间复杂度和原时间为多项式关系。
 同时可以看出$k$ 越小，使用的总鹅卵石数目越小，因此最省空间的鹅卵石游戏解法对应$k=2$。
 作为例子，图~\ref{fig:pebbles} (b) 展示了$n=16$，$k=2$ ($l=4$) 时候的游戏解法，对应步骤数为$(T+1)/2 = 41$，这里的实际操作数少了大约一半是因为最外层的Bennett过程不需要取回鹅卵石。
 
@@ -461,7 +469,7 @@ Treeverse+NiLang的方案是指用可逆计算处理单步运算的微分，同�
 \end{figure}
 
 
-我们稍微修改可以得到非可逆计算的检查点版本的规则。游戏为用户增加了一支画笔用于涂鸦格点，改变后的规则描述为
+我们稍微修改可以得到检查点版本的规则。游戏为用户增加了一支画笔用于涂鸦格点，改变后的规则描述为
 \begin{tcolorbox}[width=\textwidth, title=鹅卵石游戏-检查点版本]
     \setstretch{1.5}
     \textit{放置规则}：如果第$i$个格子上有鹅卵石，则可以从自己堆中取一个鹅卵石放置于第$i+1$个格子中，\\
@@ -516,15 +524,15 @@ Treeverse+NiLang的方案是指用可逆计算处理单步运算的微分，同�
     \caption{Treeverse算法}\label{alg:treeverse}
 \end{algorithm}
 
-检查点版本的鹅卵石游戏中，鹅卵石可以被随时取下，代表了传统计算中内存的释放。涂鸦过程则代表了梯度反向传播的过程，它要求按照逆序访问计算状态。在鹅卵石充足的情况下，最节省步骤数的解法和可逆计算版本一样，即计算过程中不取下任何鹅卵石。而用最少鹅卵石的解法则仅需要两枚鹅卵石。每当我们需要涂鸦一个格子$i$，我们总是从初始鹅卵石$s_0$开始扫描（依次放置一个鹅卵石并取下前一个鹅卵石）$i$步至格子$i$，步骤数为$\frac{n(n-1)}{2}$。
-鹅卵石数目为$2<\delta<n$的情况最难，需要用到如算法~\ref{alg:treeverse} （图\ref{fig:tradeoff} (a)）所示的Treeverse算法。
-完成第一遍从$s_0$到$s_{n}$的扫描后会在棋盘上留下$\delta=S-1$个鹅卵石（不包括初始鹅卵石），把格点分割成$\delta$个区块。我们把这些没有被取下的鹅卵石称为检查点，我们总可以从任意一个检查点出发通过放置一个鹅卵石并取回上个鹅卵石的操作扫描后方的格子。
-区块的大小有最优的取值为二项分布函数$\eta(\tau-1, \delta), \ldots, \eta(\tau-1, 2), \eta(\tau-1, 1)$，其中$\tau$的取值满足$\eta(\tau, \delta) = n$。
+检查点版本的鹅卵石游戏中，鹅卵石可以被随时取下，代表不可逆的内存擦除。涂鸦过程则代表了梯度反向传播的过程，它要求按照逆序访问计算状态。在鹅卵石充足的情况下，最节省步骤数的解法和可逆计算版本一样，即计算过程中不取下任何鹅卵石。而用最少鹅卵石的解法则仅需要两枚鹅卵石交替使用，每当我们需要涂鸦一个格子$i$，我们总是从初始鹅卵石$s_0$开始扫描（依次放置一个鹅卵石并取下前一个鹅卵石）$i$步至指定格子，因此总步骤数为$\frac{n(n-1)}{2}$。
+鹅卵石数目为$2<\delta<n$的最优解最难，需要用到如算法~\ref{alg:treeverse} （图\ref{fig:tradeoff} (a)）所示的Treeverse算法。
+完成第一遍从$s_0$到$s_{n}$的扫描后会在棋盘上留下$\delta-1=S-2$个鹅卵石（不包括初始鹅卵石），把格点分割成$\delta$个区块。我们把这些没有被取下的鹅卵石称为检查点，我们总可以从任意一个检查点出发扫描后方的格子。
+区块的大小由二项分布函数$\eta(\tau-1, \delta), \ldots, \eta(\tau-1, 2), \eta(\tau-1, 1)$确定，其中$\tau$的取值满足$\eta(\tau, \delta) = n$。
 拥有状态$s_{n}$后，$n$号格子直接满足涂鸦规则，因此我们可以在第一遍扫描时给它涂上颜色。
-为了继续涂鸦$n-1$号格点，我们从离$n-1$号格点最近的检查点出发扫描至该点，依次类推直至达到最后一个检查点处。
+为了继续涂鸦$n-1$号格点，我们从离$n-1$号格点最近的检查点出发扫描至该点，重复该过程直至涂鸦至最后一个检查点处。
 由于最后一个区块尺寸最小，仅为$\tau-1$，我们并不担心这样的扫描会使得步骤数增加太多。
 当我们完成了最后一个区块的涂鸦，我们便可把格子上用于标记最后一个区块起点的鹅卵石取下以便重复利用。
-为了涂鸦倒数第二个区块，我们先是扫描整个区间，并把这个区间用回收的鹅卵石分割为大小分别是$\eta(\tau-2, 2)$和$\eta(\tau-2, 1)$的两个子区间。
+为了涂鸦倒数第二个区块，我们先是扫描这个区块，并用刚回收的鹅卵石将其分割为大小分别是$\eta(\tau-2, 2)$和$\eta(\tau-2, 1)$的两个子区间。
 用同样的方式计算最后一个区间并递归的分割前一个子区间直至区块大小为1而无法继续分割。
 整个算法的步骤数和鹅卵石数目的关系是
 \begin{align}
@@ -538,10 +546,10 @@ Treeverse+NiLang的方案是指用可逆计算处理单步运算的微分，同�
     \caption{为了回溯中间状态，时间和空间在两种最优时间-空间交换策略下的关系。(a) 固定横轴为状态回溯的计算时间与原函数计算时间的比值，对比再允许固定时间开销下，内存的额外开销。其中Bennett算法代表了可逆计算下的最优策略，而Treeverse则是传统计算允许的最优策略，黄色点状横线对应$S'/S=50$。(b) 对比Bennett算法与Treeverse算法空间开销的比值。\label{fig:timespace}}
 \end{figure}
 
-鹅卵石游戏是对程序的时间和空间的交换关系非常理想化的模型，它恰巧非常合适用于描述常微分方程求解这样不可逆的线性程序。
+鹅卵石游戏是对程序的时间和空间的交换关系的非常理想化的描述，它恰巧非常合适用于描述常微分方程求解这样不可逆的线性程序。
 图~\ref{fig:timespace} 展示了在固定额外时间开销下，程序应用Bennett算法和Treeverse算法得到的最优的空间开销。
-可以看出，可逆计算整体上需要更多的空间开销。尤其是当步骤数更多，或是允许的时间的额外开销更大的时候，该差别更加明显。
-当程序具有一定结构，可逆计算也有不错的优点，较为直接的优点是可以利用可逆性节省内存。另外由于没有全局堆栈以及对程序自动设置检查点的问题，程序内存管理也更加可控。尤其对于写运行在GPU设备上的可微分函数，避免全局堆栈操作是必要的。
+可以看出，可逆计算整体上需要更多的空间开销。尤其是当步骤数更多，或是允许的时间的额外开销更大的时候，该差别愈加明显。
+当程序具有一定结构，可逆计算也有不错的优点，比如可以利用可逆性节省内存。另外由于可逆计算没有全局堆栈以及对程序自动设置检查点的问题，程序内存管理也更加可控。尤其对于写运行在GPU设备上的可微分核函数，避免全局堆栈操作是必要的。
 
 
 %
