@@ -441,13 +441,13 @@ Treeverse+NiLang的方案是指用可逆计算处理单步运算的微分，同�
             $S[i+1] \leftarrow 0$\;
             $S[i+1] \mathrel{+}= f_i(S[i])$
         }{
-            $l = \lceil \frac L k \rceil$\;
-            $k' = \lceil \frac L l \rceil$\;
+            $l \leftarrow \lceil \frac L k \rceil$\;
+            $k' \leftarrow \lceil \frac L l \rceil$\;
             \For{$j=1,2,...,k'$}{
-                bennett($S$, $k$, $i+(j-1)l$, $\min(\frac L k, L-(j-1)l)$) \Comment*[r]{向前执行 k' 个分块}
+                bennett($S$, $k$, $i+(j-1)l$, $\min(l, L-(j-1)l)$) \Comment*[r]{向前执行 k' 个分块}
             }
             \For{$j=k'-1,k'-2,...,1$}{
-                $\sim$bennett($S$, $k$, $i+\frac{j-1}{k}L$, $\frac L k$) \Comment*[r]{向后执行 k'-1 个分块}
+                $\sim$bennett($S$, $k$, $i+(j-1)l$, $l$) \Comment*[r]{向后执行 k'-1 个分块}
             }
         }
     }
@@ -465,7 +465,7 @@ Treeverse+NiLang的方案是指用可逆计算处理单步运算的微分，同�
 
 \begin{figure}
     \centerline{\includegraphics[width=0.88\columnwidth,trim={0 0cm 0 0cm},clip]{tradeoff2.pdf}}
-    \caption{(a) 自动微分中常见的Treeverse算法~\cite{Griewank1992}，其中$\eta(\tau, \delta) \equiv \left(\begin{matrix} \tau + \delta \\ \delta \end{matrix}\right)=\frac{(\tau+\delta)!}{\tau!\delta!}$。(b) 可逆计算时空交换的Bennett算法。~\cite{Bennett1973,Levine1990} 其中，$P$和$Q$分别代表了计算和反计算。}\label{fig:tradeoff}
+    \caption{(a) Treeverse算法~\cite{Griewank1992}示意图，其中$\eta(\tau, \delta) \equiv \left(\begin{matrix} \tau + \delta \\ \delta \end{matrix}\right)=\frac{(\tau+\delta)!}{\tau!\delta!}$。(b) Bennett算法示意图~\cite{Bennett1973,Levine1990}，其中$P$和$Q$分别代表了计算和反计算。}\label{fig:tradeoff}
 \end{figure}
 
 
@@ -481,7 +481,7 @@ Treeverse+NiLang的方案是指用可逆计算处理单步运算的微分，同�
 
 \begin{figure}
     \centerline{\includegraphics[width=0.88\columnwidth,trim={0 0cm 0 0cm},clip]{bennett_treeverse_pebbles.pdf}}
-    \caption{(a) Treeverse算法 ($\tau=3$, $\delta=3$) 和 (b) Bennett算法 ($k=2$, $n=4$) 对应的时间空间交换策略下的鹅卵石游戏，横向是一维棋盘的格子，纵向是步骤。其中“\tikzcircle[black,fill=white]{2pt}”为在这一步中收回的鹅卵石，“\tikzcircle[black,fill=black]{2pt}”为在这一步中放上的鹅卵石，而颜色稍淡的“\tikzcircle[mygray,fill=mygray]{2pt}”则对应遗留在棋盘上未收回的鹅卵石。红色格子代表已被涂鸦，带旗帜的格点代表终点。}\label{fig:pebbles}
+    \caption{(a) Treeverse算法 ($\tau=3$, $\delta=3$) 和 (b) Bennett算法 ($k=2$, $n=4$) 对应的最优时间空间交换策略下的鹅卵石游戏解法，横向是一维棋盘的格子，纵向是步骤。其中“\tikzcircle[black,fill=white]{2pt}”为在这一步中收回的鹅卵石，“\tikzcircle[black,fill=black]{2pt}”为在这一步中放上的鹅卵石，而颜色稍淡的“\tikzcircle[mygray,fill=mygray]{2pt}”则对应之前步骤中遗留在棋盘上未收回的鹅卵石。(a) 中的红色格子代表已被涂鸦。(b) 中带旗帜的格点代表终点。}\label{fig:pebbles}
 \end{figure}
 
 \begin{algorithm}
@@ -511,7 +511,7 @@ Treeverse+NiLang的方案是指用可逆计算处理单步运算的微分，同�
 
         $\overline{s_\sigma} = \overline{f_\sigma}(\overline{s_{\sigma+1}}, s_\sigma)$\Comment*[r]{利用已有的$s_\sigma$和$\overline{s_\phi}$回传导数}
         \If{\rm $\sigma>\beta$}{
-            remove($S[\beta]$) \Comment*[r]{从缓存的状态集合中移除$s_\beta$}
+            remove($S[\sigma]$) \Comment*[r]{从缓存的状态集合中移除$s_\sigma$}
         }
         {\bf return} $\overline{s_\sigma}$
     }
