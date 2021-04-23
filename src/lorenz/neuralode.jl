@@ -1,6 +1,8 @@
 using ..TreeverseAndBennett: build_aug_dynamics
 
- function force_gradient(t, x, θ, gy)
+export lorenz_aug_dynamics
+
+ function lorenz_aug_dynamics(t, x, θ, gy)
     a = lorenz(t, x, θ)
     _, _, r, gθ = (~i_lorenz)(P3(GVar(a.x, gy.x), GVar(a.y, gy.y), GVar(a.z, gy.z)), t, GVar(x), GVar(θ))
     a, P3(-r.x.g, -r.y.g, -r.z.g), Glued((-).(NiLang.AD.grad(gθ))...)
@@ -16,7 +18,7 @@ function error(Nt::Int; nrepeat=100)
 
         x1 = ODESolve(RK4(), lorenz, x0, θ; ts=0.0:Δt:Δt*Nt)
         z0 = Glued(x1, P3(1.0, 0.0, 0.0), Glued(0.0,0.0,0.0))
-        aug_dynamics = build_aug_dynamics(force_gradient)
+        aug_dynamics = build_aug_dynamics(lorenz_aug_dynamics)
         g_neural_ode = ODESolve(RK4(), aug_dynamics, z0, θ; ts=Δt*Nt:-Δt:0.0).data[2]
         norm(g_fd .- [g_neural_ode.x, g_neural_ode.y, g_neural_ode.z])/norm(g_fd)
     end
@@ -31,7 +33,7 @@ function run_neuralode_checkpoint_errors(; output_file=nothing)
     res = map(nsteps) do n
         gn = P3(1.0, 0.0, 0.0)
         gθ = Glued(1.0, 0.0, 0.0)
-        g1, gθ = checkpointed_neuralode(RK4(), lorenz, force_gradient, P3(x0...), gn, θ, gθ; ts=ts, checkpoint_step=n)
+        g1, gθ = checkpointed_neuralode(RK4(), lorenz, lorenz_aug_dynamics, P3(x0...), gn, θ, gθ; ts=ts, checkpoint_step=n)
         g_fd = ForwardDiff.gradient(x->ODESolve(RK4(), lorenz, P3(x[1:3]...), (x[4:6]...,); ts=ts).x, [x0..., θ...])
         norm(g_fd .- [g1.x, g1.y, g1.z, gθ.data...])/norm(g_fd)
     end
