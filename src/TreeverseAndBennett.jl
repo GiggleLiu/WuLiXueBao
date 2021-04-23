@@ -14,6 +14,7 @@ export treeverse, bennett, treeverse!, bennett!, Lorenz, TreeverseLog, BennettLo
 project_relative_path(xs...) = normpath(joinpath(dirname(dirname(pathof(@__MODULE__))), xs...))
 
 include("run_benchmarks.jl")
+include("neuralode.jl")
 include("viz_bennett_treeverse.jl")
 include("viz_pebble.jl")
 include("lorenz/Lorenz.jl")

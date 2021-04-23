@@ -1,11 +1,11 @@
 using ..TreeverseAndBennett: run_benchmarks
 
 function f_nilang(; y0 = P3(1.0, 0.0, 0.0), θ=(10.0, 27.0, 8/3), Nt=10000, Δt = 3e-3)
-    i_ODESolve(RK4(), lorenz!, zeros(typeof(y0), Nt+1), y0, θ; ts=0.0:Δt:Δt*Nt)[3]
+    i_ODESolve(RK4(), i_lorenz, zeros(typeof(y0), Nt+1), y0, θ; ts=0.0:Δt:Δt*Nt)[3]
 end
 
 function g_nilang(; y0 = P3(1.0, 0.0, 0.0), θ=(10.0, 27.0, 8/3), Nt=10000, Δt = 3e-3)
-    NiLang.gradient(iloss!, (0.0, lorenz!, zeros(typeof(y0), Nt+1), y0, θ); ts=0.0:Δt:Δt*Nt, iloss=1)[[4,5]];
+    NiLang.gradient(iloss!, (0.0, i_lorenz, zeros(typeof(y0), Nt+1), y0, θ); ts=0.0:Δt:Δt*Nt, iloss=1)[[4,5]];
 end
 
 function f_julia(; y0 = P3(1.0, 0.0, 0.0), θ=(10.0, 27.0, 8/3), Δt=3e-3, Nt=10000, logger=nothing)
@@ -45,9 +45,9 @@ end
 export run_lorenz_line
 function run_lorenz_line(; y0 = P3(1.0, 0.0, 0.0), Nt=10000, Δt = 3e-3, fname=joinpath(dirname(dirname(@__DIR__)), "paper/lorenz_line.dat"))
     θ1=(10.0, 27.0, 8/3)
-    res1 = i_ODESolve(RK4(), lorenz!, zeros(typeof(y0), Nt+1), y0, θ1; ts=0.0:Δt:Δt*Nt)[3]
+    res1 = i_ODESolve(RK4(), i_lorenz, zeros(typeof(y0), Nt+1), y0, θ1; ts=0.0:Δt:Δt*Nt)[3]
     θ2=(10.0, 15.0, 8/3)
-    res2 = i_ODESolve(RK4(), lorenz!, zeros(typeof(y0), Nt+1), y0, θ2; ts=0.0:Δt:Δt*Nt)[3]
+    res2 = i_ODESolve(RK4(), i_lorenz, zeros(typeof(y0), Nt+1), y0, θ2; ts=0.0:Δt:Δt*Nt)[3]
     M = zeros(6, Nt+1)
     for i=1:Nt+1
         M[1,i] = res1[i].x

@@ -9,6 +9,10 @@ end
     include("seismic.jl")
 end
 
+@testset "seismic" begin
+    include("neuralode.jl")
+end
+
 @testset "vizsualize" begin
     @test plot_fingerprinting() isa Compose.Context
     @test plot_pebblegame() isa Compose.Context
