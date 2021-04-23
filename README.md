@@ -67,7 +67,7 @@ Compute the pulses that received by the detector
 julia> target_pulses = solve_detector(param, src, rc, c2, detector_locs)
 ```
 
-![target pulsese](data/target_pulses.gif)
+![target pulses](data/target_pulses.png)
 
 Now, we compute the gradient on the initial uniform landscape.
 
