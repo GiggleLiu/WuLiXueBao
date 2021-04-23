@@ -1,5 +1,5 @@
 @i function lorenz_step!(y!::T, y::T, θ; Δt) where T
-    i_ODEStep((@skip! RK4()), (@skip! lorenz!), y!, y, θ; Δt, t=0.0)
+    i_ODEStep((@skip! RK4()), (@skip! i_lorenz), y!, y, θ; Δt, t=0.0)
 end
 
 @i function bennett_loss(out, step, y, x, θ; kwargs...)

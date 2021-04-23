@@ -25,3 +25,4 @@ output/
 _local/
 *.swp
 Manifest.toml
+*.synctex

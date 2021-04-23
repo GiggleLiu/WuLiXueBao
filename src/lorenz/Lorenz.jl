@@ -1,7 +1,6 @@
 module Lorenz
 
 using ..TreeverseAndBennett: RK4, ODESolve, Glued, checkpointed_neuralode, i_ODESolve, i_ODEStep
-using ReversibleSeismic: build_aug_dynamics
 
 using BenchmarkTools
 using DelimitedFiles
@@ -12,13 +11,11 @@ using NiLang.AD: GVar
 using NiLang
 using Statistics
 
-export P3, lorenz
+export P3, lorenz, i_lorenz
 
-include("point.jl")
+include("base.jl")
 include("bennett.jl")
 include("treeverse.jl")
-include("julia.jl")
-include("reversible_programming.jl")
 include("neuralode.jl")
 include("benchmarking.jl")
 

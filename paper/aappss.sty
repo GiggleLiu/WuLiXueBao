@@ -57,7 +57,6 @@ to\textwidth{\vbox{\hfill\huge\sl Acta Physica Sinica\hfill}}
     \newcommand{\liuhao}{\fontsize{7.87pt}{9.45pt}\selectfont}
     \newcommand{\xiaoliuhao}{\fontsize{7.78pt}{8.65pt}\selectfont}
     \newcommand{\qihao}{\fontsize{5.25pt}{\baselineskip}\selectfont}
-    \newcommand*{\fangsong}{\CJKfamily{zhfs}}
     \linespread{1.25}
     \renewcommand{\normalsize}{\wuhao}
 
@@ -103,7 +102,7 @@ to\textwidth{\vbox{\hfill\huge\sl Acta Physica Sinica\hfill}}
 \def\author#1{{\begin{center}{\sihao \fangsong #1}\end{center}}}
 \def\address#1#2{{\centering{\protect\baselineskip=10pt\xiaowuhao {#1} {\hglue2pt(#2)}}\par}}
 \def\date#1#2{\vglue.4ex\centerline{\xiaowuhao({#1}收到; {#2}收到修改稿)}\par\vglue9pt}
-\def\abstract#1{\begin{center}\vglue.3cm\begin{minipage}{0.95\textwidth} \wuhao\songti #1 \end{minipage}\end{center} \vspace*{0.2ex}}
+\def\abstract#1{\begin{center}\vglue.3cm\begin{minipage}{0.95\textwidth} \CJKindent\wuhao\songti #1 \end{minipage}\end{center} \vspace*{0.2ex}}
 \def\keywords#1{\begin{center}\vglue 3mm \begin{minipage}{0.95\textwidth} {\noindent\normalsize\CJKfamily{hei}{关键词:}~~{\songti #1}}\end{minipage}
 \end{center}}
 \def\pacs#1{\begin{center}\vglue 0mm \begin{minipage}{0.95\textwidth} {\noindent\normalsize{\bf PACS:}~~{#1}}\end{minipage}
