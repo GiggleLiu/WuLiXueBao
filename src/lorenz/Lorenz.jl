@@ -11,7 +11,7 @@ using NiLang.AD: GVar
 using NiLang
 using Statistics
 
-export P3, lorenz
+export P3, lorenz, i_lorenz
 
 include("base.jl")
 include("bennett.jl")

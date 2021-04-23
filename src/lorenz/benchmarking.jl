@@ -78,3 +78,16 @@ function _plot_lorenz_grad(σs,ρs,mg,curve, fname)
     #savefig(fname*".png")
     plt
 end
+
+function Plots.plot(curve::AbstractVector{<:P3}, args...; kwargs...)
+    xs = map(x->x.x, curve)
+    ys = map(x->x.y, curve)
+    zs = map(x->x.z, curve)
+    Plots.plot(xs, ys, zs, args...; kwargs...)
+end
+function Plots.plot!(ax, curve::AbstractVector{<:P3}, args...; kwargs...)
+    xs = map(x->x.x, curve)
+    ys = map(x->x.y, curve)
+    zs = map(x->x.z, curve)
+    Plots.plot!(ax, xs, ys, zs, args...; kwargs...)
+end

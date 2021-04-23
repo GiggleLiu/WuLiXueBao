@@ -9,7 +9,7 @@ end
     include("seismic.jl")
 end
 
-@testset "seismic" begin
+@testset "neuralode" begin
     include("neuralode.jl")
 end
 
