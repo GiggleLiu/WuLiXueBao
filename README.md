@@ -14,7 +14,7 @@ pkg> add https://github.com/JuliaReverse/ReversibleSeismic.jl#master
 pkg> dev https://github.com/GiggleLiu/WuLiXueBao
 ```
 
-The `dev` command will clone the repo to the `.julia/dev` folder.
+The `dev` command will clone the repo to the `~/.julia/dev` folder.
 
 ### The easy one: Lorenz curve
 Open a Julia REPL and type
