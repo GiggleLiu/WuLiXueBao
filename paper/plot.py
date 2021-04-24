@@ -164,9 +164,9 @@ class PLT(object):
             plt.ylim([0, 1500])
             plt.xlim([4, 400])
             for (x, y, t) in zip(mem1, mg1[1,:], mg1[2,:]):
-                plt.annotate(int(t), (x, y+30), va="bottom", ha="center")
+                plt.annotate("%.2f"%(t/1e4), (x, y+30), va="bottom", ha="center")
             for (x, y, t) in zip(mem2, mg2[1,:], mg2[2,:]):
-                plt.annotate(int(t), (x, y+30), va="bottom", ha="center")
+                plt.annotate("%.2f"%(t/1e4-1), (x, y+30), va="bottom", ha="center")
             plt.xlabel(r"theorerical peak memory/GB" if lang == "EN" else r"理论内存峰值/32MB", fontproperties = ChineseFont2, fontsize=14)
             plt.ylabel(r"time/s" if lang == "EN" else r"时间/秒", fontproperties = ChineseFont2, fontsize=14)
             plt.xscale("log")

@@ -374,7 +374,7 @@ $$\dot{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.6\columnwidth]{./fig5.pdf}
-    \caption{Bennett算法和Treeverse算法实际应用与PML求解过程的微分的时间与空间开销，其中图中标记的数字为函数的前向运行次数，在Bennett算法中，后向运行次数和前向运行次数一样，而Treeverse算法中，反向传播的次数固定为$10^4$。横轴的空间的数值的实际含义为检查点的数目或可逆计算中的最大状态数。\label{fig:seismic}}
+    \caption{Bennett算法和Treeverse算法实际应用与PML求解过程的微分的时间与空间开销，其中图中标记的数字为函数的实际前向运行步骤数与原始模拟步骤数 ($10^4$) 的比值，纵轴的总时间是前向计算和后向传播时间的总和。在Bennett算法中，后向运行次数和前向运行次数一样，而Treeverse算法中，反向传播的次数固定为$10^4$。横轴的空间的数值的实际含义为检查点的数目或可逆计算中的最大状态数。\label{fig:seismic}}
 \end{figure}
 
 在数值模拟中，我们用双精度浮点数模拟了$1000 \times 1000$的二维格点上的PML方程求解，每个状态要存储4个矩阵$s_n = \{u^{n-1}, u^n, \phi_x^n, \phi_y^n\}$，占用存储空间为32MB。
