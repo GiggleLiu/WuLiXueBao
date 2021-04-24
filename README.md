@@ -1,6 +1,6 @@
 # Automatic Differentiation in Physics Simulation (自动微分以及它在物理模拟中的应用)
 
-This is a repo for demonstrating the examples in paper "自动微分以及它在物理模拟中的应用".
+This is a repo for demonstrating the examples in paper [自动微分以及它在物理模拟中的应用"](https://github.com/GiggleLiu/WuLiXueBao/blob/master/paper/paper.pdf)
 
 ## Examples
 ### Get started
