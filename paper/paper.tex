@@ -47,7 +47,7 @@
 \author{刘金国$^{1)}$ \quad 许开来$^{2)}$}
 
 \address{1)}{哈佛大学物理系, 坎布里奇 \quad 02138}
-\address{2)}{斯坦佛大学, 斯坦佛 \quad 94305}
+\address{2)}{斯坦福大学, 斯坦福 \quad 94305}
 
 %\address{3)}{}
 
@@ -374,7 +374,7 @@ $$\dot{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.6\columnwidth]{./fig5.pdf}
-    \caption{Bennett算法和Treeverse算法实际应用与PML求解过程的微分的时间与空间开销，其中图中标记的数字为函数的前向运行次数，在Bennett算法中，后向运行次数和前向运行次数一样，而Treeverse算法中，反向传播的次数固定为$10^4$。横轴的空间的数值的实际含义为检查点的数目或可逆计算中的最大状态数。\label{fig:seismic}}
+    \caption{Bennett算法和Treeverse算法实际应用与PML求解过程的微分的时间与空间开销，其中图中标记的数字为函数的实际前向运行步骤数与原始模拟步骤数 ($10^4$) 的比值，纵轴的总时间是前向计算和后向传播时间的总和。在Bennett算法中，后向运行次数和前向运行次数一样，而Treeverse算法中，反向传播的次数固定为$10^4$。横轴的空间的数值的实际含义为检查点的数目或可逆计算中的最大状态数。\label{fig:seismic}}
 \end{figure}
 
 在数值模拟中，我们用双精度浮点数模拟了$1000 \times 1000$的二维格点上的PML方程求解，每个状态要存储4个矩阵$s_n = \{u^{n-1}, u^n, \phi_x^n, \phi_y^n\}$，占用存储空间为32MB。
@@ -543,7 +543,7 @@ Treeverse+NiLang的方案是指用可逆计算处理单步运算的微分，同�
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.8\columnwidth]{./fig1.pdf}
-    \caption{为了回溯中间状态，时间和空间在两种最优时间-空间交换策略下的关系。(a) 固定横轴为状态回溯的计算时间与原函数计算时间的比值，对比再允许固定时间开销下，内存的额外开销。其中Bennett算法代表了可逆计算下的最优策略，而Treeverse则是传统计算允许的最优策略，黄色点状横线对应$S'/S=50$。(b) 对比Bennett算法与Treeverse算法空间开销的比值。\label{fig:timespace}}
+    \caption{为了回溯中间状态，时间和空间在两种最优时间-空间交换策略下的关系。(a) 固定横轴为状态回溯的计算时间与原函数计算时间的比值，对比再允许固定时间开销下，内存的额外开销。其中Bennett算法代表了可逆计算下的最优策略，而Treeverse则是传统计算允许的最优策略。(b) 对比Bennett算法与Treeverse算法空间开销的比值。\label{fig:timespace}}
 \end{figure}
 
 鹅卵石游戏是对程序的时间和空间的交换关系的非常理想化的描述，它恰巧非常合适用于描述常微分方程求解这样不可逆的线性程序。

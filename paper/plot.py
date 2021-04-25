@@ -43,13 +43,14 @@ class PLT(object):
                 plt.xlabel("$T'/T$")
                 plt.xlim(1,T)
                 plt.legend(fontsize=11)
-            ax1.axhline(y=50, color="C1", ls=':')
+            #ax1.axhline(y=50, color="C1", ls=':')
             plt.tight_layout()
 
     def fig2(self, tp='pdf'):
         with DataPlt(filename="fig2.%s"%tp, figsize=(7,4)) as dp:
             ax1 = plt.subplot(121)
-            errors = np.loadtxt("lorenz/data/errors.dat")
+            cornertex("(a)", ax1)
+            errors = np.loadtxt("../data/errors.dat")
             xs = np.arange(len(errors))
             plt.plot(xs, errors, lw=1.5)
             plt.xlabel(u"积分步数", fontproperties = ChineseFont2, fontsize=14)
@@ -57,7 +58,8 @@ class PLT(object):
             plt.yscale("log")
             plt.xlim(0,1000)
             ax2 = plt.subplot(122)
-            data = np.loadtxt("lorenz/data/neuralode_checkpoint.dat")
+            cornertex("(b)", ax2)
+            data = np.loadtxt("../data/neuralode_checkpoint.dat")
             xs = data[:,0]
             ys = data[:,1]
             plt.plot(xs, ys, lw=1.5, marker="o")
@@ -164,9 +166,9 @@ class PLT(object):
             plt.ylim([0, 1500])
             plt.xlim([4, 400])
             for (x, y, t) in zip(mem1, mg1[1,:], mg1[2,:]):
-                plt.annotate(int(t), (x, y+30), va="bottom", ha="center")
+                plt.annotate("%.2f"%(t/1e4), (x, y+30), va="bottom", ha="center")
             for (x, y, t) in zip(mem2, mg2[1,:], mg2[2,:]):
-                plt.annotate(int(t), (x, y+30), va="bottom", ha="center")
+                plt.annotate("%.2f"%(t/1e4-1), (x, y+30), va="bottom", ha="center")
             plt.xlabel(r"theorerical peak memory/GB" if lang == "EN" else r"理论内存峰值/32MB", fontproperties = ChineseFont2, fontsize=14)
             plt.ylabel(r"time/s" if lang == "EN" else r"时间/秒", fontproperties = ChineseFont2, fontsize=14)
             plt.xscale("log")

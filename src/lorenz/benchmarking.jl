@@ -19,7 +19,7 @@ end
 function g_neuralode(; y0 = P3(1.0, 0.0, 0.0), θ=(10.0, 27.0, 8/3), Δt=3e-3, Nt=10000, checkpoint_step=200)
     gn = P3(1.0, 0.0, 0.0)
     gθ = Glued(1.0, 0.0, 0.0)
-    g1, gθ = checkpointed_neuralode(RK4(), lorenz, force_gradient, y0, gn, θ, gθ; ts=0:Δt:Nt*Δt, checkpoint_step=checkpoint_step)
+    g1, gθ = checkpointed_neuralode(RK4(), lorenz, lorenz_aug_dynamics, y0, gn, θ, gθ; ts=0:Δt:Nt*Δt, checkpoint_step=checkpoint_step)
 end
 
 export run_lorenz_benchmarks
