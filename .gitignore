@@ -26,3 +26,4 @@ _local/
 *.swp
 Manifest.toml
 *.synctex
+*.bcf
