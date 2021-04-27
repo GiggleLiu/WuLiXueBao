@@ -90,7 +90,7 @@ STRINGS { s t }
 FUNCTION {output.nonnull}
 { 's :=
   output.state mid.sentence =
-    { ", " * write$ }
+    { " " * write$ }
     { output.state after.block =
         { add.period$ write$
           newline$
@@ -200,7 +200,8 @@ FUNCTION {new.sentence.checkb}
 FUNCTION {field.or.null}
 { duplicate$ empty$
     { pop$ "" }
-    'skip$
+    %'skip$
+    {"{\bf " swap$ * "}" *}
   if$
 }
 
@@ -271,14 +272,14 @@ FUNCTION {format.editors}
 FUNCTION {format.isbn}
 { isbn empty$
     { "" }
-    { new.block "ISBN " isbn * }
+    { "ISBN " isbn * }
   if$
 }
 
 FUNCTION {format.issn}
 { issn empty$
     { "" }
-    { new.block "ISSN " issn * }
+    { "ISSN " issn * }
   if$
 }
 
@@ -293,7 +294,7 @@ FUNCTION {format.url}
 FUNCTION {format.doi}
 { doi empty$
     { "" }
-    { new.block "\doi{" doi * "}" * }
+    { "\doi{" doi * "}" * }
   if$
 }
 
@@ -394,10 +395,11 @@ FUNCTION {output.bibitem}
 FUNCTION {n.dashify}
 { 't :=
   ""
-    { t empty$ not }
+    %{ t empty$ not }
+    { t #1 #1 substring$ "-" = not t empty$ not and}
     { t #1 #1 substring$ "-" =
         { t #1 #2 substring$ "--" = not
-            { "  " *
+            { " " *
               t #2 global.max$ substring$ 't :=
             }
             {   { t #1 #1 substring$ "-" = }
@@ -454,7 +456,7 @@ FUNCTION {either.or.check}
 FUNCTION {format.bvolume}
 { volume empty$
     { "" }
-    { "volume" volume tie.or.space.connect
+    { "{\bf " volume * "}" *
       series empty$
         'skip$
         { " of " * series emphasize * }
@@ -571,7 +573,7 @@ FUNCTION {format.vol.num.eid}
     'skip$
     { duplicate$ empty$
         { pop$ format.eid }
-        { " \penalty0 " * eid * }
+        { "\penalty0 " * eid *}
       if$
     }
   if$
@@ -597,8 +599,8 @@ FUNCTION {format.in.ed.booktitle}
 { booktitle empty$
     { "" }
     { editor empty$
-        { "In " booktitle emphasize * }
-        { "In " format.editors * ", " * booktitle emphasize * }
+        { " " booktitle emphasize * }
+        { " " format.editors * ", " * booktitle emphasize * }
       if$
     }
   if$
@@ -641,10 +643,10 @@ FUNCTION {format.article.crossref}
           warning$
           ""
         }
-        { "In \emph{" journal * "}" * }
+        { " \emph{" journal * "}" * }
       if$
     }
-    { "In " }
+    { " " }
   if$
   " \citet{" * crossref * "}" *
 }
@@ -652,7 +654,7 @@ FUNCTION {format.article.crossref}
 FUNCTION {format.book.crossref}
 { volume empty$
     { "empty volume in " cite$ * "'s crossref of " * crossref * warning$
-      "In "
+      " "
     }
     { "Volume" volume tie.or.space.connect
       " of " *
@@ -688,13 +690,13 @@ FUNCTION {format.incoll.inproc.crossref}
               crossref * warning$
               ""
             }
-            { "In \emph{" booktitle * "}" * }
+            { " \emph{" booktitle * "}" * }
           if$
         }
-        { "In " }
+        { " " }
       if$
     }
-    { "In " }
+    { " " }
   if$
   " \citet{" * crossref * "}" *
 }
@@ -708,7 +710,7 @@ FUNCTION {article}
   crossref missing$
     { journal emphasize "journal" output.check
       eid empty$
-        { format.vol.num.pages output }
+        {format.vol.num.pages output}
         { format.vol.num.eid output }
       if$
     }
@@ -742,24 +744,24 @@ FUNCTION {book}
   if$
 
   format.date "year" output.check
-  format.btitle "title" output.check
   crossref missing$
     { format.bvolume output
-      new.block
       format.number.series output
-      new.sentence
+     % new.sentence
       publisher "publisher" output.check
       address output
     }
-    { new.block
+    {
       format.book.crossref output.nonnull
     }
   if$
-  format.edition output
-  format.isbn output
-  format.doi output
-  format.url output
-  new.block
+  %format.edition output
+  %format.isbn output
+  %format.doi output
+  %format.url output
+  %new.block
+  ", " output
+  format.btitle "title" output.check
   note output
   fin.entry
 }
@@ -862,18 +864,6 @@ FUNCTION {inproceedings}
       format.bvolume output
       format.number.series output
       format.pages output
-      address empty$
-        { organization publisher new.sentence.checkb
-          organization output
-          publisher output
-        }
-        { address output.nonnull
-          format.date "year" output.check
-          new.sentence
-          organization output
-          publisher output
-        }
-      if$
     }
     { format.incoll.inproc.crossref output.nonnull
       format.pages output
@@ -929,8 +919,8 @@ FUNCTION {misc}
   format.date output
   author format.key output
   title howpublished new.block.checkb
-  format.title output
-  howpublished new.block.checka
+  %format.title output
+  %howpublished new.block.checka
   howpublished output
   format.issn output
   format.url output
@@ -944,15 +934,14 @@ FUNCTION {phdthesis}
 { output.bibitem
   format.authors "author" output.check
   author format.key output
-  new.block
-  format.btitle "title" output.check
-  new.block
-  "PhD thesis" format.thesis.type output.nonnull
-  school "school" output.check
-  address output
   format.date "year" output.check
+  %new.block
+  ", PhD thesis: " format.thesis.type output.nonnull
+  format.btitle "title" output.check
+  %school "school" output.check
+  address output
   format.url output
-  new.block
+  %new.block
   note output
   fin.entry
 }
