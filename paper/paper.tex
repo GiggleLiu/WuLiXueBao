@@ -56,7 +56,7 @@
 \abstract{自动微分是利用计算机自动化求导的技术，最近几十年因为它在机器学习研究中的应用而被很多人了解。
 如今越来越多的科学工作者意识到高效的，自动化的求导可以为很多科学问题的求解提供新的思路，其中自动微分在物理模拟中的应用尤为重要且具有挑战性。
 物理系统的可微分模拟可以帮助解决混沌理论，电磁学，地震学，海洋学等领域中的很多重要问题，但又因为其对计算时间和空间的苛刻要求而对自动微分技术本身提出了挑战。
-本文将会回顾将自动微分技术运用到物理模拟中的几种方法，并横向对比它们在计算时间，空间和精度方面的优势和劣势。这些自动微分技术包括共轭态法，前向自动微分，后向自动微分以及可逆计算自动微分。}
+本文将会回顾将自动微分技术运用到物理模拟中的几种方法，并横向对比它们在计算时间，空间和精度方面的优势和劣势。这些自动微分技术包括伴随状态法，前向自动微分，后向自动微分以及可逆计算自动微分。}
 
 \keywords{自动微分，科学计算，可逆计算，最优检查点，物理模拟}
 
@@ -83,13 +83,13 @@
 \begin{multicols}{2}
 \begin{description}
 \setlength\itemsep{-0.5em}
-    \item[对偶量] adjoint
+    \item[伴随变量] adjoint
     \item[核函数] kernel function
     \item[原子函数] primitive function
     \item[可逆计算] reversible computing
     \item[可逆编程] reversible programming
     \item[鹅卵石游戏] pebble game
-    \item[共轭态法] adjoint state method
+    \item[伴随状态法] adjoint state method
     \item[自动微分] automatic differentiation (AD)
     \item[前向自动微分] forward mode AD
     \item[后向自动微分] reverse mode AD
@@ -97,7 +97,6 @@
     \item[检查点] checkpoint
     \item[拓展动力学] augmented dynamics
     \item[损失] loss
-    \item[对偶量] adjoint
     \item[控制流] control flow
     \item[辛积分器] symplectic integrator
     \item[洛伦茨] Lorenz
@@ -118,8 +117,8 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
 
 对物理模拟过程的自动微分是自动微分重要的应用之一，其中最大的技术挑战是对电磁学，海洋学~\cite{Heimbach2005}和地震学~\cite{Symes2007,Zhu2020}等问题中最核心的微分方程求解过程的自动微分。
 这些微分方程的常见的求解方法是先将问题的时空坐标离散化，并以数值积分的形式完成求解。要得到精确的结果，离散化后的网格需要设计的很稠密，从而对存储空间和计算时间的需求巨大。与此同时，在自动微分计算过程中，机器学习中主流的后向自动微分库，如Jax~\cite{James2018}和PyTorch~\cite{Paszke2019}，需要很多额外的空间来缓存中间结果，导致人们经常无法直接用它们对具有一定规模的实际物理模拟问题求导。
-一种传统的解决常微分方程求导的方案叫做共轭态法~\cite{Plessix2006,Chen2018}，它假设了在较短时间内积分器可逆，并通过逆向积分来帮助自动微分回溯状态。
-事实上，除了Leapfrog等少数辛积分器可外，大多数的积分器并不能保证严格的时间反演对称，所以共轭态法往往存在与积分步长有关的系统性误差。
+一种传统的解决常微分方程求导的方案叫做伴随状态法~\cite{Plessix2006,Chen2018}，它假设了在较短时间内积分器可逆，并通过逆向积分来帮助自动微分回溯状态。
+事实上，除了Leapfrog等少数辛积分器可外，大多数的积分器并不能保证严格的时间反演对称，所以伴随状态法往往存在与积分步长有关的系统性误差。
 后来，有人把机器学习中的最优检查点算法带入到了物理模拟的反向自动微分中~\cite{Symes2007}，仅引入对数的额外时间和空间开销就做到了严格求导。也有一些人直接利用基于最优检查点算法~\cite{Griewank1992,Forget2015}的自动微分编译器，如Tapenade~\cite{Hascoet2013}, OpenAD~\cite{Utke2008}和TAF~\cite{Heimbach2005}等，编译模拟代码实现类似的时间和空间的权衡。
 在最近几年，可逆计算开始被用作一种新的全编程语言的微分的方案~\cite{Liu2020b}，它提供了一种不同的时间和空间的交换方案叫做Bennett算法~\cite{Levine1990}，可以做到对数的额外空间开销，但是对应的时间额外开销为多项式。可逆计算的优势在与提供了传统自动微分框架所不具有的内存控制的灵活性，因此可以被用来微分GPU核函数，复杂的控制流等。
 
@@ -136,7 +135,7 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
 \begin{align}
     \begin{split}
     s_n &= \text{ODESolve}(f, s_0, \theta, t_0, t_n)\\
-        &= (s_{i+1} = {\rm ODEStep}(f, s_{i}, \theta, t_i, \Delta t) ~\text{for $i=0,2, \ldots, n-1$})
+        &= (s_{i+1} = {\rm ODEStep}(f, s_{i}, \theta, t_i, \Delta t) ~\text{for $i=0,1, \ldots, n-1$})
     \end{split}
 \end{align}
 其中$s_i$为完成第$i$步积分后的状态。为了简便，下文我们将单步运算简记为${\rm ODEStep}(s_{i})$。
@@ -145,7 +144,7 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
 
 \subsection{共轭态方法}
     共轭态方法~\cite{Plessix2006,Chen2018}是专门针对常微分方程的反向传播方法。在研究中，人们发现积分过程的导数的反向传播同样是一个积分过程，只不过方向相反。
-    于是人们通过构造一个可以同时更新原函数和导数的拓展函数，以对拓展函数的逆向积分的形式完成导数的计算，如算法~\ref{alg:adjointstate}所示。
+    于是人们通过构造一个可以同时回溯函数值和回传导数的拓展函数，以对拓展函数的逆向积分的形式完成导数的计算，如算法~\ref{alg:adjointstate}所示。
 该算法的描述来自文献~\cite{Chen2018}，其中可以找到详细的推导过程，这里对原算法中的符号做了替换以方便读者理解。
 算法中的$\frac{\partial q}{\partial s}$，$\frac{\partial q}{\partial \theta}$以及$\frac{\partial \mathcal{L}}{\partial s_n}$为局域导数，它们可以通过手动推导或者借助其它自动微分库来实现。
 该方案在积分器严格可逆的时候梯度也严格，而当积分器反向积分误差不可忽略时，则需要额外的处理保证误差在可控范围，这一点我们会在随后的例子中涉及。
@@ -159,7 +158,7 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
         \Fn{\rm aug\_dynamics(($s$, $a$, -), $t$, $\theta$)}{$q=f(s, t, \theta)$ \Comment*[r]{定义拓展动力学函数} \textbf{return} ($q$, $-a^T\frac{\partial q}{\partial s}$, $-a^T\frac{\partial q}{\partial \theta}$)}
         $S_0$ = ($s_n$, $\frac{\partial \mathcal{L}}{\partial s_n}$, $0$) \Comment*[r]{计算拓展动力学函数的初始状态}
         ($s_0$, $\frac{\partial \mathcal{L}}{\partial s_0}$, $\frac{\partial \mathcal{L}}{\partial \theta}$) = ODESolve(aug\_dynamics, $S_0$, $\theta$, $t_n$, $t_0$) \Comment*[r]{对拓展动力学反向积分}
-    \caption{共轭态法}\label{alg:adjointstate}
+    \caption{伴随状态法}\label{alg:adjointstate}
 \end{algorithm}
 
 
@@ -173,7 +172,7 @@ Nolan早在他1953年的博士论文中就提出过计算机自动化求导的�
 \end{figure}
 数学中，在对一个输入变量$p$求导时，会让它携带一个无穷小量$\D p$，并通过对这个无穷小量的运算完成对程序的求导。比如当作用函数$f$时，会有如下链式法则
 \begin{align}
-    f(\vec x+ \frac{\D \vec x}{\D p} \D p) = f(\vec x) + \left(\frac{\D f(\vec x)}{\D \vec x}\frac{\D \vec x}{\D p}\right) \D p
+    f\left(\vec x+ \frac{\D \vec x}{\D p} \D p\right) = f(\vec x) + \left(\frac{\D f(\vec x)}{\D \vec x}\frac{\D \vec x}{\D p}\right) \D p
 \end{align}
 其中$\vec x$为输入函数$f$的参数的集合，可以包括$p$本身。$\frac{\D f(\vec x)}{\D \vec x}$为局域雅可比矩阵，前向传播中我们将它与梯度矢量相乘得到新的梯度矢量。
 实际程序实现中，这个局域雅可比矩阵并不需要构造出来，考虑到任何程序都具有可拆分为基础指令的特点，人们把程序拆解为基础标量指令，并在这些基础指令上通过代码变换或者是算符重载的方式实现梯度矢量的计算。
@@ -193,21 +192,21 @@ $$\dot{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 
 \subsection{后向自动微分}
 后向自动微分与前向自动微分梯度传播方向相反，它解决了前向自动微分中计算开销随着需要求导的变量数目线性增长的问题。后向自动微分包括正向计算和梯度反向传播两个过程。正向计算过程中，程序进行普通的计算并获取所需的运行时信息，最后得到一个标量损失$\mathcal{L}$。
-梯度回传的过程是计算导数的过程，可表示为更新一个变量的梯度$\frac{\D \mathcal{L}}{\D v}$的过程。从$\frac{\D\mathcal L}{\D\mathcal L} = 1$出发，
+梯度回传的过程是计算导数的过程，可表示为更新变量的梯度$\frac{\D \mathcal{L}}{\D \vec v}$的过程。从$\frac{\D\mathcal L}{\D\mathcal L} = 1$出发，
 梯度对应如下链式法则
 \begin{align*}
-    \frac{\D \mathcal{L}}{\D x} &= \sum_y\frac{\partial \mathcal{L}}{\partial y}\frac{\D y}{\D x}
+    \frac{\D \mathcal{L}}{\D \vec x} &= \sum_{\vec i=1}\frac{\partial \mathcal{L}}{\partial \vec y_i}\frac{\D \vec y_i}{\D \vec x}
 \end{align*}
-为了实现该链式法则，软件包设计者们一般会在软件中规定一类可微分的函数集合，叫做原子函数$\{f_p\}$，并定义了梯度在原子函数$y=f_p(x)$上的回传规则，可表示为对偶量$\overline{v} = \frac{\D \mathcal{L}}{\D v}$的更新规则
+为了实现该链式法则，软件包设计者们一般会在软件中规定一类可微分的函数集合，叫做原子函数$\{f_p\}$，并定义了梯度在原子函数$y=f_p(x)$上的回传规则，可表示为伴随变量$\overline{v} = \frac{\D \mathcal{L}}{\D \vec v}$的更新规则
 \begin{align*}
-    \overline f_p: (\overline x, \overline y) \mapsto (\overline x + \overline y\frac{\partial y}{\partial x}, \overline y)
+    \overline f_p: (\overline x, \overline y) \mapsto (\overline x + \overline y\frac{\partial y}{\partial \vec x}, \overline \vec y)
 \end{align*}
-其中，$\frac{\partial y}{\partial x}$为局域雅可比矩阵，它的数值不需要具体计算出来，而是通过后向传播函数实现。根据实现不同，这些原子函数可以是Tapenade和NiLang~\cite{Liu2020b}那样仅包含有限个基础标量指令，也可以是向Jax和Pytorch中那样的可拓展的常用函数集合。
-用户将程序表示为原子函数的组合，在前向计算中，计算机将遇到的原子函数的后向传播函数连同所需的中间变量一起存放在堆栈中\footnote{除了堆栈方案，也有一些软件包通过静态编译等手段的实现状态回溯。}，并在反向传播中按照后进先出的顺序调用，这样代码便可以利用上述梯度回传规则更新对偶量。
+其中，$\frac{\partial \vec y}{\partial \vec x}$为局域雅可比矩阵，它的数值不需要具体计算出来，而是通过后向传播函数实现。根据实现不同，这些原子函数可以是Tapenade和NiLang~\cite{Liu2020b}那样仅包含有限个基础标量指令，也可以是向Jax和Pytorch中那样的可拓展的常用函数集合。
+用户将程序表示为原子函数的组合，在前向计算中，计算机将遇到的原子函数的后向传播函数连同所需的中间变量一起存放在堆栈中\footnote{除了堆栈方案，也有一些软件包通过静态编译等手段的实现状态回溯。}，并在反向传播中按照后进先出的顺序调用，这样代码便可以利用上述梯度回传规则更新伴随变量。
 具体到求解常微分方程的自动微分过程中，其反向传播过程如图~\ref{fig:autodifftypes} (b) 所示，可以形式化的表达为
 
 \begin{align*}
-    \overline{\rm ODEStep}^{\rm B} : (\overline s_{i+1}, \overline\theta, s_i) \mapsto %\left(s_{i} = \texttt{pop}(\Sigma);
+    \overline{\rm ODEStep}^{\rm B} : (\overline{s_{i+1}}, \overline\theta, s_i) \mapsto %\left(s_{i} = \texttt{pop}(\Sigma);
     \left(\overline{s_{i+1}}\frac{\partial s_{i+1}}{\partial s_{i}}
     ,\overline{\theta} + \overline{s_{i+1}}\frac{\partial s_{i+1}}{\partial \theta}\right)%\right)
 \end{align*}
@@ -296,18 +295,18 @@ $$\dot{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
     \begin{tabularx}{0.8\textwidth}{Xcccc}\toprule
         \textbf{方法} & 时间 & 空间 & 是否严格 \\
         \hline
-        共轭态法                    &  $\bigO(T)$          & $\bigO(S)$ & 否 \\
+        伴随状态法                    &  $\bigO(T)$          & $\bigO(S)$ & 否 \\
         前向自动微分                 &  $\bigO(NT)$         & $\bigO(S)$ & 是 \\
         基于最优检查点的后向自动微分     &  $\bigO(T\log T)$    & $\bigO(S\log T)$  & 是\\
         基于可逆计算的后向自动微分   &  $\bigO(T^{1+\epsilon})$ & $\bigO(S\log T)$  & 是 \\
         \bottomrule
     \end{tabularx}
-    \caption{不同自动微分方案中，时间与空间复杂度的关系。这里共轭态法没有考虑了缓存部分中间结果以保证反向积分的正确性，考虑止之后应为$\bigO(TS)$。前向自动微分时间复杂度中的$N$代表了需要求导的参数个数。可逆计算中的多项式时间复杂度中的$\epsilon > 0$。} \label{tbl:complexity}
+    \caption{不同自动微分方案中，时间与空间复杂度的关系。这里伴随状态法没有考虑了缓存部分中间结果以保证反向积分的正确性，考虑止之后应为$\bigO(TS)$。前向自动微分时间复杂度中的$N$代表了需要求导的参数个数。可逆计算中的多项式时间复杂度中的$\epsilon > 0$。} \label{tbl:complexity}
 \end{table}
 
 
 \section{自动微分在物理模拟中的应用}\label{sec:applications}
-本章节有两个案例，其一是用前向自动微分和共轭态法求解参数较少的洛伦茨系统模拟的导数，
+本章节有两个案例，其一是用前向自动微分和伴随状态法求解参数较少的洛伦茨系统模拟的导数，
 其二是用最基于最优检查点算法和可逆计算的后向微分对步骤较多且内存消耗巨大的地震学模拟的求导。
 这些例子的源代码可以在Github仓库中找到：\href{https://github.com/GiggleLiu/WuLiXueBao}{https://github.com/GiggleLiu/WuLiXueBao}。
 
@@ -328,7 +327,7 @@ $$\dot{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 \end{figure}
 表~\ref{tbl:lorenztiming}对比了不同方法的时间和空间的消耗，可以看到前向自动微分所用的时间仅为原代码的不到2倍。这里的高效来自ForwardDiff中允许一次对多个变量求导，代价是用了正比于参数数目倍数的空间。该技术虽然没有改变随着输入变量数目增加，计算复杂度线性增加的本质，但是减少了线性部分的系数，对处理实际问题很有帮助。
 基于可逆计算的后向自动微分库NiLang~\cite{Liu2020b}需的计算时间为原计算的约3.5倍，其中包含了前向计算和反向传播过程，因此这个速度并不算差。但是由于龙格库塔积分器不可逆，在不利用额外的计算时间交换空间的情况下，需要缓存每一步的计算以保证可逆性，因此要求有$10^4$倍于状态大小的缓存空间。好在该问题的单个状态空间仅有三个维度，不作任何缓存求导仍然很容易。
-表中最后一列的共轭态法的单步求导利用了NiLang的自动微分，虽然共轭态法在理论上可以做到无额外内存消耗，但是会引入由于积分器不可逆带来的系统误差，这对于研究混沌问题非常致命。我们以前向自动微分的导数是严格的导数作为基准，把共轭态法求得的导数的$l^2$相对误差与积分步长的关系绘制于图~\ref{fig:neuralode-error} (a)中，可以看出相对误差随着积分步长指数增加。
+表中最后一列的伴随状态法的单步求导利用了NiLang的自动微分，虽然伴随状态法在理论上可以做到无额外内存消耗，但是会引入由于积分器不可逆带来的系统误差，这对于研究混沌问题非常致命。我们以前向自动微分的导数是严格的导数作为基准，把伴随状态法求得的导数的$l^2$相对误差与积分步长的关系绘制于图~\ref{fig:neuralode-error} (a)中，可以看出相对误差随着积分步长指数增加。
 因此，我们需要每隔一段积分，就设置一个检查点重新加载正确的坐标。图 (b) 显示检查点越密，误差越小，消耗的额外空间也越多。在表格中的模拟中，我们选择了检查点步长为200，对应检查点数目为50，相对误差约为$10^{-5}$。
 
 \begin{table}\centering
@@ -355,9 +354,9 @@ $$\dot{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 考虑由如下方程决定的波函数$u(x_1, x_2, t)$在非均匀二维介质中的传播过程
 \begin{align}
     \begin{cases}
-    \frac{\D^2 u}{\D t^2} - \nabla\cdot(c^2\nabla u) = f & t>0,\\
+    \frac{\partial^2 u}{\partial t^2} - \nabla\cdot(c^2\nabla u) = f & t>0,\\
     u = u_0 & t=0,\\
-    \frac{\D u}{\D t} = v_0 & t=0.
+    \frac{\partial u}{\partial t} = v_0 & t=0.
     \end{cases}
 \end{align}
 其中$c$为波在介质中的传播速度。理想匹配层 (PML)~\cite{Berenger1994,Roden2000,MaKoEz08}是模拟波在介质中运动的一种准确可靠的方案，
@@ -390,34 +389,9 @@ Treeverse+NiLang的方案是指用可逆计算处理单步运算的微分，同�
 这里单步计算梯度的之所比前向计算慢很多是因为当使用NiLang微分并行运行的GPU核函数，必须要避免变量的共享读取以避免程序在后向计算中同时并行更新同一块内存的梯度，这些额外的设计带来了很多性能的损失。与此对比，在单线程版本的CPU上，前向和后向的单步运算时间差距在四倍以内。
 此外，虽然Treeverse算法在可以做到高效的时间和空间的交换，但由于内存的管理需要用到系统内存中的全局堆栈，无法直接用于微分GPU的核函数。而可逆计算则非常适合微分这种非线性且具有一定可逆性的程序，这也是为什么这里选择用可逆计算对单步运算求导来避免手动求导GPU核函数的麻烦。
 
-%\section{总结}
-%本文展示了几种自动微分方案，包括前向自动微分，后向自动微分和专门针对常微分方程的共轭态法。
-%\vskip 1.55\baselineskip
-%\subsection{热带（Tropical）张量网络求解自旋玻璃最优构型}
-%热带张量网络是张量网络的一个特别的应用，它重新定义了张量中基础元素的代数为
-%\begin{eqnarray}
-%x \oplus y  = \max(x, y),\,\,\,\,\,\,\,\,\,\,\,\, \,\,\,\,
-%x \odot y   =  x + y. \label{eq:max-sum-alg}
-%\end{eqnarray}
-%\begin{figure}[t]
-%\centering
-%\includegraphics[width=\columnwidth]{./transform12.pdf}
-    %\caption{正方晶格上的自旋玻璃问题，(a)对应的热带张量网络表示。(b)对应的“量子线路”表示。\label{fig:performance}}
-%\end{figure}
-%如果我们将张量中的元素定义为自旋玻璃的耦合强度，我们就可以通过收缩这个张量结构得到自旋玻璃的最优构型。
-%这个最优构型的能量表达式为
-%\begin{equation}
-    %E(\{\sigma\}) = \max\limits_{\sigma}-\sum_{i < j }J_{ij} \sigma_i \sigma_j  - \sum_i h_i \sigma_i,
-%\label{eq:spinglassopt}
-%\end{equation}
-    %因此对它的微分就是。
-%但是作了这样的替换，张量收缩的微分规则就发生了变换。
-
 \section*{致谢}
 
 感谢王磊老师的讨论以及计算设备的支持。
-%感谢彩云天气CTO苑明理老师的讨论。
-
 
 \section*{附录：时间与空间的交换，鹅卵石游戏}\label{sec:pebblegame}
 鹅卵石游戏是一个定义在一维格子上的单人游戏。人们最初提出这个模型是为了描述可逆计算中的时间与空间的交换关系。游戏开始时，玩家拥有一堆鹅卵石以及一个一维排布的$n$个格子，标记为$0,1,2\ldots n$，并且在$0$号格子上有一个预先布置的鹅卵石。
