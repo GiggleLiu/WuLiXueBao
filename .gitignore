@@ -27,3 +27,11 @@ _local/
 Manifest.toml
 *.synctex
 *.bcf
+*.4ct
+*.4tc
+*.css
+*.html
+*.idv
+*.lg
+*.tmp
+*.xref
