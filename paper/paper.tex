@@ -301,7 +301,7 @@ $$\dot{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
         基于可逆计算的后向自动微分   &  $\bigO(T^{1+\epsilon})$ & $\bigO(S\log T)$  & 是 \\
         \bottomrule
     \end{tabularx}
-    \caption{不同自动微分方案中，时间与空间复杂度的关系。这里伴随状态法没有考虑了缓存部分中间结果以保证反向积分的正确性，考虑止之后应为$\bigO(TS)$。前向自动微分时间复杂度中的$N$代表了需要求导的参数个数。可逆计算中的多项式时间复杂度中的$\epsilon > 0$。} \label{tbl:complexity}
+    \caption{不同自动微分方案中，时间与空间复杂度的关系。这里伴随状态法没有考虑了缓存部分中间结果以保证反向积分的正确性，考虑之后应为$\bigO(TS)$。前向自动微分时间复杂度中的$N$代表了需要求导的参数个数。可逆计算中的多项式时间复杂度中的$\epsilon > 0$。} \label{tbl:complexity}
 \end{table}
 
 
@@ -393,6 +393,7 @@ Treeverse+NiLang 的方案是指用可逆计算处理单步运算的微分，同
 
 感谢王磊老师的讨论以及计算设备的支持。
 感谢彩云天气 CTO 苑明理老师关于自动微分关于自动微分在天气预报中应用的讨论。
+感谢 QuEra 公司提供的研究赞助。
 
 \section*{附录：时间与空间的交换，鹅卵石游戏}\label{sec:pebblegame}
 鹅卵石游戏是一个定义在一维格子上的单人游戏。人们最初提出这个模型是为了描述可逆计算中的时间与空间的交换关系。游戏开始时，玩家拥有一堆鹅卵石以及一个一维排布的$n$个格子，标记为$0,1,2\ldots n$，并且在$0$号格子上有一个预先布置的鹅卵石。
@@ -553,7 +554,7 @@ Treeverse+NiLang 的方案是指用可逆计算处理单步运算的微分，同
 
 \title{Automatic differentiation and its applications in physics simulation $^{\ast}$}%{\efundlink}
 
-\efund{}
+\efund{Acknowledges funding provided by QuEra Computing Inc. through a sponsored research program.\\}
 
 \author{Jin-Guo Liu$^{1)}$ \quad Kai-Lai Xu$^{2)}$}
 
