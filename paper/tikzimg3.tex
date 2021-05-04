@@ -1,0 +1,19 @@
+\documentclass[tikz,convert={outfile=\jobname.svg}]{standalone}
+%\usetikzlibrary{...}% tikz package already loaded by 'tikz' option
+\begin{document}
+\begin{tikzpicture}
+    \def\dx{0}
+    \foreach \x in {2,...,5}
+        \draw [->,thick] (\x+\dx-0.9,0.1) .. controls (\x+\dx-0.5,0.5) .. (\x+\dx-0.1,0.1)
+        node[pos=0.5,yshift=1ex]{\x};
+    \foreach \x in {1,2,3,4,5}
+        \filldraw[fill=black] (\x+\dx,0) circle [radius=0.1];
+
+    \def\dy{-1}
+    \foreach \x in {1,2,3,4,5}
+        \filldraw[fill=black] (\x+\dx,\dy) circle [radius=0.1];
+    \foreach[evaluate={\j=\x==1?\x:int(\x+1)}] \x in {4,...,0}
+        \draw [red,<-,thick] (5.1-\x+\dx,\dy-0.1) .. controls (5.5-\x+\dx,\dy-0.5) .. (5.9-\x+\dx,\dy-0.1)
+        node[pos=0.5,yshift=-1ex]{\j};
+\end{tikzpicture}
+\end{document}
