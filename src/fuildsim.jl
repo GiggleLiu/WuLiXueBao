@@ -1,7 +1,7 @@
 # https://www.researchgate.net/profile/Jos-Stam/publication/2560062_Real-Time_Fluid_Dynamics_for_Games/links/0f317536cf9c741475000000/Real-Time-Fluid-Dynamics-for-Games.pdf
 
 # grid space h = 1/Nx
-## Moving Densities
+# Moving Densities
 function add_source(x, s, dt)
     @inbounds for i=1:length(x)
         x[i] += dt*s[i]
@@ -14,7 +14,7 @@ function swap(a::AbstractArray, b::AbstractArray)
     end
 end
 
-## Gauss-Seidel relaxation to simulate diffuse
+# Gauss-Seidel relaxation to simulate diffuse
 function diffuse(b, x, x0, diff, dt, h)
     Nx, Ny = size(x) .- 2
     a=dt*diff/h/h
@@ -23,8 +23,17 @@ function diffuse(b, x, x0, diff, dt, h)
         for j=2:Ny+1, i=2:Nx+1
             x[i,j] = f1*x0[i,j] + f2*(x[i-1,j]+x[i+1,j] + x[i,j-1]+x[i,j+1])
         end
+        set_bnd(b, x)
     end
-    set_bnd(b, x)
+end
+function diffuse_bad(b, x, x0, diff, dt, h)
+    a=dt*diff/h/h
+    Nx, Ny = size(x) .- 2
+    for j=2:Ny+1, i=2:Nx+1
+        x[i,j] = x0[i,j] + a*(x0[i-1,j]+x0[i+1,j] + x0[i,j-1]+x0[i,j+1]-4*x0[i,j])
+        set_bnd(b, x)
+    end
+    @show sum(x0), sum(x)
 end
 
 clip(x, a, b) = (x<a ? a : (x>b ? b : x))
@@ -52,7 +61,7 @@ function dens_step(x, x0, u, v; diffusion, dt, h)
     advect(0, x, x0, u, v, dt, h)
 end
 
-## Evolving Velocities
+# Evolving Velocities
 function vel_step(u, v, u0, v0; viscosity, dt, h)
     add_source(u, u0, dt)
     add_source(v, v0, dt)
@@ -119,21 +128,9 @@ function run(Nx::Int, Ny::Int; nstep, dt, h=1.0/Nx, visc=0.0, diff)
     res[:,:,1] .= dens_prev
     for i=1:nstep
         @show i
-        if i==1
-            vel_step(u, v, u_prev, v_prev; viscosity=visc, dt=dt, h=h)
-            dens_step(dens, dens_prev, u, v; diffusion=diff, dt=dt, h=h)
-        else
-            vel_step(u, v, u_prev, v_prev; viscosity=visc, dt=dt, h=h)
-            dens_step(dens, dens_prev, u, v; diffusion=diff, dt=dt, h=h)
-        end
+        vel_step(u, v, u_prev, v_prev; viscosity=visc, dt=dt, h=h)
+        dens_step(dens, dens_prev, u, v; diffusion=diff, dt=dt, h=h)
         res[:,:,i+1] .= dens
-        @show sum(dens)
-        #dens_prev .= dens
-        #u_prev .= u
-        #v_prev .= v
-        #dens .= 0
-        #u .= 0
-        #v .= 0
     end
     return res
 end
@@ -146,5 +143,5 @@ function generate_animation(tu_seq; stepsize=20, fps=5)
     gif(ani, fps=fps)
 end
 
-res = run(200, 200; nstep=100, dt=0.1, h=1/200, visc=5e-4, diff=2e-4)
+res = run(200, 200; nstep=100, dt=0.1, h=1/200, visc=5e-4, diff=2e-4);
 generate_animation(res; stepsize=5, fps=5)
