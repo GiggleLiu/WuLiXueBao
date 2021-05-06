@@ -11,11 +11,11 @@ using NiLang
 end
 
 # Gauss-Seidel relaxation to simulate diffuse
-@i function diffuse(b, x::AbstractMatrix{T}, x0, diffusion::TD, gars; dt, h, gs_iter) where {T,TD}
+@i function diffuse(b, x::AbstractArray{T,3}, x0, diffusion::TD, gars; dt, h, gs_iter) where {T,TD}
     @routine begin
-        Nx, Ny ← size(x) .- 2
+        Nx, Ny ← size(x0) .- 2
         dthh ← dt/h/h
-        @zeros TD a foura
+        @zeros TD a foura f1 f2
         a += diffusion*dthh
         foura += 4*a
         INC(foura)
@@ -32,18 +32,18 @@ end
                 x[i,j,k] += f2 * x[i,j+1,k-1]
             end
         end
-        set_bnd(b, x[:,:,gs_iter], gars[k-1])
+        set_bnd(b, x[:,:,gs_iter], gars[:,k-1])
     end
     ~@routine
 end
 
-@i @inline function split_fraction(i0::Int, s1, x0, N)
+@i @inline function split_fraction(i0::Int, s1, x, N)
     if x<1.5
         s1 += 1.5
     elseif x>N+1.5
         s1 += N+1.5
     else
-        si += x
+        s1 += x
     end
     i0 += @const floor(Int, s1)
     s1 -= i0
@@ -58,7 +58,7 @@ end
     @inbounds for j=2:Ny+1
         for i=2:Nx+1
             @routine begin
-                @zeros T s0 s1 t0 t1 x y
+                @zeros T s0 s1 t0 t1 x y A B
                 @zeros Int i0 j0
                 x += i
                 x -= dt0*u[i,j]
@@ -68,13 +68,13 @@ end
                 split_fraction(j0, t1, y, Ny)
                 s0 += 1 - s1
                 t0 += 1 - t1
-                a += t0*d0[i0,j0]
-                a += t1*d0[i0,j0+1]
-                b += t0*d0[i0+1,j0]
-                b += t1*d0[i0+1,j0+1]
+                A += t0*d0[i0,j0]
+                A += t1*d0[i0,j0+1]
+                B += t0*d0[i0+1,j0]
+                B += t1*d0[i0+1,j0+1]
             end
-            d[i,j] += s0*a
-            d[i,j] += s1*b
+            d[i,j] += s0*A
+            d[i,j] += s1*B
             ~@routine
         end
     end
@@ -87,11 +87,11 @@ end
     SWAP(x0, x[:,:,1])
     diffuse(0, x, x0, diffusion, gars; dt=dt, h=h, gs_iter=gs_iter)
     SWAP(x0, x[:,:,gs_iter+1])
-    advect(0, x[:,:,gs_iter+1], x0, u, v, gars[gs_iter+1]; dt=dt, h=h)
+    advect(0, x[:,:,gs_iter+1], x0, u, v, gars[:,gs_iter+1]; dt=dt, h=h)
 end
 
 # Evolving Velocities
-@i function vel_step(u, v, u0, v0; viscosity, dt, h, gs_iter)
+@i function vel_step(u, v, u0, v0, viscosity; dt, h, gs_iter)
     add_source(u, u0, dt)
     add_source(v, v0, dt)
     SWAP(u0, u)
@@ -101,16 +101,22 @@ end
     project(u, v, u0, v0; h=h, gs_iter=gs_iter)
     SWAP(u0, u)
     SWAP(v0, v)
-    advect(1, u, u0, u0, v0; dt=dt, h=h)
-    advect(2, v, v0, u0, v0; dt=dt, h=h)
+    u0_ += u0
+    advect(1, u, u0, u0_, v0; dt=dt, h=h)
+    v0_ += v0
+    advect(2, v, v0_, u0, v0; dt=dt, h=h)
     project(u, v, u0, v0; h=h, gs_iter=gs_iter)
 end
 
 @i function project(u, v, p, div; h, gs_iter)
-    Nx, Ny = size(u) .- 2
+    Nx, Ny ← size(u) .- 2
+    halfh += 0.5*h
     @inbounds for j=2:Ny+1
         for i=2:Nx+1
-            div[i,j] += -0.5*h*(u[i+1,j]-u[i-1,j] + v[i,j+1]-v[i,j-1])
+            div[i,j] -= halfh * u[i+1,j]
+            div[i,j] += halfh * u[i-1,j]
+            div[i,j] -= halfh * v[i,j+1]
+            div[i,j] += halfh * v[i,j-1]
         end
     end
     set_bnd(0, div, gar1)
@@ -146,12 +152,20 @@ end
 
 # garbage size is 2Nx + 2Ny + 4
 @i function set_bnd(b, x, garbage)
-    Nx, Ny = size(x) .- 2
+    Nx, Ny ← size(x) .- 2
     @inbounds for i=2:Nx+1
         SWAP(x[i,1], garbage[2i-1])
-        x[i,1] += b==2 ? -x[i,2] : x[i,2]
+        if b==2 
+            x[i,1] += -x[i,2]
+        else
+            x[i,1] += x[i,2]
+        end
         SWAP(x[i,Ny+2], garbage[2i])
-        x[i,Ny+2] += b==2 ? -x[i,Ny+1] : x[i,Ny+1]
+        if b==2
+            x[i,Ny+2] += -x[i,Ny+1]
+        else
+            x[i,Ny+2] += x[i,Ny+1]
+        end
     end
     @inbounds for j=2:Ny+1
         SWAP(x[1,j], garbage[2Nx+2j-1])
@@ -161,39 +175,47 @@ end
     end
 
     @inbounds begin
-        SWAP(x[1,j], garbage[2Nx+2j-1])
-        x[1,1] += 0.5*(x[2,1]+x[1,2])
-        x[1,Ny+2] += 0.5*(x[2,Ny+2]+x[1,Ny+1])
-        x[Nx+2,1] += 0.5*(x[Nx+1,1]+x[Nx+2,2])
-        x[Nx+2,Ny+2] += 0.5*(x[Nx+1,Ny+2]+x[Nx+2,Ny+1])
+        SWAP(x[1,1], garbage[end-3])
+        x[1,1] += 0.5*x[2,1]
+        x[1,1] += 0.5*x[1,2]
+        SWAP(x[1,Ny+2], garbage[end-2])
+        x[1,Ny+2] += 0.5*x[2,Ny+2]
+        x[1,Ny+2] += 0.5*x[1,Ny+1]
+        SWAP(x[Nx+2,1], garbage[end-1])
+        x[Nx+2,1] += 0.5*x[Nx+1,1]
+        x[Nx+2,1] += 0.5*x[Nx+2,2]
+        SWAP(x[Nx+2,Ny+2], garbage[end])
+        x[Nx+2,Ny+2] += 0.5*x[Nx+1,Ny+2]
+        x[Nx+2,Ny+2] += 0.5*x[Nx+2,Ny+1]
     end
 end
 
-@i function simulate!(res::AbstractArray{T,3}, u, v, u_pre, v_pre, gars; viscosity, dt, h) where T
-    res[:,:,1] += dens_prev
+@i function simulate!(res::AbstractArray{T,3}, dens_prev, u, v, u_pre, v_pre, viscosity, diffusion; dt, h, nstep, gs_iter) where T
+    Nx, Ny ← size(u) .- 2
     for i=1:nstep
         @safe @show i
         #vel_step(u, v, u_prev, v_prev; viscosity=visc, dt=dt, h=h)
-        @routine begin
+        res[:,:,1] += dens_prev
+        @routine @invcheckoff begin
             dens ← zeros(T, size(u)..., gs_iter+1)
             gars ← zeros(T, 2Nx+2Ny+4, gs_iter+1)
             dens[:,:,1] += res[:,:,i]
-            dens_step(dens, dens_prev, u, v, diff, gars; dt=dt, h=h, gs_iter=20)
+            dens_step(dens, dens_prev, u, v, diffusion, gars; dt=dt, h=h, gs_iter=20)
         end
-        res[:,:,i+1] += dens
+        res[:,:,i+1] += dens[:,:,gs_iter+1]
         ~@routine
     end
 end
 
-function run(Nx::Int, Ny::Int; nstep, dt, h=1.0/Nx, visc=0.0, diff)
+function run(Nx::Int, Ny::Int; nstep, dt, h=1.0/Nx, viscosity=0.0, diffusion, gs_iter=20)
     u, v, dens, u_prev, v_prev, dens_prev = [zeros(Nx+2, Ny+2) for i=1:6]
 
-    dens_prev[Nx÷2:Nx÷2+5,Nx÷2:Nx÷2+5] .= 1
     u_prev .= 1.0
     v_prev .= 0.0
 
     res = zeros(Nx+2, Ny+2, nstep+1)
-    simulate!(res, u, v, u_pre, v_pre; viscosity, dt, h)
+    dens_prev[Nx÷2:Nx÷2+5,Nx÷2:Nx÷2+5,1] .= 1
+    simulate!(res, dens_prev, u, v, u_prev, v_prev, viscosity, diffusion; dt, h, nstep, gs_iter)[1]
 end
 
 using Plots
@@ -204,5 +226,5 @@ function generate_animation(tu_seq; stepsize=20, fps=5)
     gif(ani, fps=fps)
 end
 
-res = run(200, 200; nstep=100, dt=0.1, h=1/200, visc=5e-4, diff=5e-4)
+res = run(200, 200; nstep=100, dt=0.1, h=1/200, viscosity=5e-4, diffusion=5e-4)
 generate_animation(res; stepsize=5, fps=5)
