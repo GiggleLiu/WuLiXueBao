@@ -143,5 +143,5 @@ function generate_animation(tu_seq; stepsize=20, fps=5)
     gif(ani, fps=fps)
 end
 
-res = run(200, 200; nstep=100, dt=0.1, h=1/200, visc=5e-4, diff=2e-4);
-generate_animation(res; stepsize=5, fps=5)
+@time res = run(200, 200; nstep=100, dt=0.1, h=1/200, visc=5e-4, diff=2e-4);
+#generate_animation(res; stepsize=5, fps=5)
