@@ -79,31 +79,6 @@
 \vskip 0.55\baselineskip
 
 
-\section{名~~词~~表}
-\begin{multicols}{2}
-\begin{description}
-\setlength\itemsep{-0.5em}
-    \item[伴随变量] adjoint
-    \item[核函数] kernel function
-    \item[原子函数] primitive function
-    \item[可逆计算] reversible computing
-    \item[可逆编程] reversible programming
-    \item[鹅卵石游戏] pebble game
-    \item[伴随状态法] adjoint state method
-    \item[自动微分] automatic differentiation (AD)
-    \item[前向自动微分] forward mode AD
-    \item[后向自动微分] reverse mode AD
-    \item[地震学] seismic
-    \item[检查点] checkpoint
-    \item[拓展动力学] augmented dynamics
-    \item[损失] loss
-    \item[控制流] control flow
-    \item[辛积分器] symplectic integrator
-    \item[洛伦茨] Lorenz
-    \item[龙格库塔] Runge-Kutta
-\end{description}
-\end{multicols}
-
 \section{引~~~~言}
 
 
@@ -168,7 +143,11 @@ Nolan 早在他1953年的博士论文中就提出过计算机自动化求导的�
     \begin{figure}[t]
         \centering
         \includegraphics[width=0.9\columnwidth,trim={0 0cm 0 0},clip]{fig3.pdf}
-        \caption{物理模拟程序中对状态的 (a) 前向自动微分和 (b) 后向自动微分过程。其中线条上的箭头代表运算的方向，圆圈为后向自动微分中缓存的变量。}\label{fig:autodifftypes}
+        \caption{
+            物理模拟程序中对状态变量梯度的 (a) 前向传播和 (b) 后向传播过程。其中线条上的箭头代表运算的方向，圆圈为后向自动微分中缓存的变量。\\
+            The (a) forward mode and (b) backward mode gradient propagation for states in a physics simulation.
+            The arrow are computating direction, circles are cached states in the backward mode automatic differentiation.
+        }\label{fig:autodifftypes}
 \end{figure}
 数学中，在对一个输入变量$p$求导时，会让它携带一个无穷小量$\D p$，并通过对这个无穷小量的运算完成对程序的求导。比如当作用函数$f$时，会有如下链式法则
 \begin{align}
@@ -278,7 +257,12 @@ $$\dot{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
         \filldraw[fill=black] (\x+\dx,\y) circle [radius=0.1];
     \draw (2.5+\dx,-3.3) node {(b)};
 \end{tikzpicture}
-    \caption{(a) 检查点方案和 (b) 反计算方案避免缓存全部中间状态。图中黑箭头为正常计算过程，红箭头为梯度回传过程，蓝箭头为梯度回传和反向计算的复合过程，箭头上的数字代表了执行顺序。黑色和白色的圆点为被缓存和未被缓存 (或通过反计算消除) 的状态。}\label{fig:tradeoff-both}
+    \caption{
+    使用 (a) 检查点方案和 (b) 反计算方案避免缓存全部中间状态。图中黑箭头为正常计算过程，红箭头为梯度回传过程，蓝箭头为梯度回传和反向计算的复合过程，箭头上的数字代表了执行顺序。黑色和白色的圆点为被缓存和未被缓存 (或通过反计算消除) 的状态。\\
+    Using (a) checkpointing scheme and (b) reverse computing scheme to avoid caching all intermediate states. The black arrows are regular forward computing, red arrows are gradient back propagation,
+    and blue arrows are combinations of back propagation and reverse computing. The numbers above the arrows are the execution order.
+    Black and white circles represents cached states and not cached states (or those states deallocated using reversed computing).
+    }\label{fig:tradeoff-both}
 \end{figure}
 
 
@@ -323,7 +307,11 @@ $$\dot{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.8\columnwidth]{./fig4.pdf}
-    \caption{(a) 洛伦茨系统中固定参数$\beta=8/3$，梯度大小与参数$\rho$和$\sigma$的关系。图中颜色代表了平均梯度大小，黑线是理论上会不会存在稳定吸引子分界线。(b) 中的蓝色和黄色的线分别对应 (a) 图标识的蓝点处参数 $(\sigma=10, \rho=27)$ 和黄点处参数$(\sigma=10, \rho=15)$ 对应的动力学模拟。\label{fig:chaos}}
+    \caption{(a) 洛伦茨系统中固定参数$\beta=8/3$，梯度大小与参数$\rho$和$\sigma$的关系。
+    图中颜色代表了平均梯度大小，黑线是理论上会不会存在稳定吸引子分界线。(b) 中的蓝色和黄色的线分别对应 (a) 图标识的蓝点处参数 $(\sigma=10, \rho=27)$ 和黄点处参数$(\sigma=10, \rho=15)$ 对应的动力学模拟。
+    (a) The magnitude of gradients as a function of parameter $\rho$ and $\sigma$ in a Lorenz system with  $\beta$ fixed to $8/3$.
+    Colors in the graph represents the magnitude of average gradients and the black line is a theoretical predicted  stable attractor. The blue and yellow curves in (b) are simulations at parameters corresponding to the blue $(\sigma=10, \rho=27)$ and yellow $(\sigma=10, \rho=15)$ dots in (a).
+    }\label{fig:chaos}
 \end{figure}
 表~\ref{tbl:lorenztiming}对比了不同方法的时间和空间的消耗，可以看到前向自动微分所用的时间仅为原代码的不到2倍。这里的高效来自 ForwardDiff 中允许一次对多个变量求导，代价是用了正比于参数数目倍数的空间。该技术虽然没有改变随着输入变量数目增加，计算复杂度线性增加的本质，但是减少了线性部分的系数，对处理实际问题很有帮助。
 基于可逆计算的后向自动微分库NiLang~\cite{Liu2020b}需的计算时间为原计算的约3.5倍，其中包含了前向计算和反向传播过程，因此这个速度并不算差。但是由于龙格库塔积分器不可逆，在不利用额外的计算时间交换空间的情况下，需要缓存每一步的计算以保证可逆性，因此要求有$10^4$倍于状态大小的缓存空间。好在该问题的单个状态空间仅有三个维度，不作任何缓存求导仍然很容易。
@@ -338,14 +326,18 @@ $$\dot{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
         空间 (估计)          & 1   &  6 & $10^4$ & 50\\  % 2.79ms for pure reversible
         \bottomrule
     \end{tabularx}
-    \caption{不同方法对洛伦茨系统的微分所需时间和空间，其中空间部分以状态数目为单位。
+    \caption{不同方法对$10^4$步洛伦茨系统积分过程的微分所需时间和空间，其中空间部分以状态数目为单位，时间的估计通过BenchmarkTools.jl软件包多次统计得出。
     这里，NeuralODE中单步计算的微分由NiLang完成，检查点的步长为200步。}\label{tbl:lorenztiming}
 \end{table}
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.6\columnwidth]{./fig2.pdf}
-    \caption{(a) 利用共轭态方法对$\rho=27, \sigma=10, \beta=8/3$的洛伦茨系统求导时，相对$l^2$误差与积分步数的关系。其中一个点代表了在该步长下，对$100$个随机初始点计算得到的中位数，缺失的数据代表该处出现数值溢出。 (b) 每隔固定步长设置检查点后，$10^4$步积分的误差。\label{fig:neuralode-error}}
+    \caption{(a) 利用共轭态方法对$\rho=27, \sigma=10, \beta=8/3$的洛伦茨系统求导时，相对$l^2$误差与积分步数的关系。其中一个点代表了在该步长下，对$100$个随机初始点计算得到的中位数，缺失的数据代表该处出现数值溢出。 (b) 每隔固定步长设置检查点后，$10^4$步积分的误差。\\
+    (a) Relative $l^2$ error as a function of the integration step when differentiating the Lorenz equation solver at parameters $\rho=27, \sigma=10, \beta=8/3$ using the adjoint state method.
+    A data point in the graph is a meadian of $100$ random initial position. Some data are missing due to the numerical overflow.
+    (b) The same error curve of computing $10^4$ step simulation when checkpointing every $x$ steps.
+    }\label{fig:neuralode-error}
 \end{figure}
 
 
@@ -377,7 +369,15 @@ PML 模拟的自动微分在地震学中有着重要的应用~\cite{Zhu2021}，�
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.6\columnwidth]{./fig5.pdf}
-    \caption{Bennett算法和Treeverse算法实际应用与PML求解过程的微分的时间与空间开销，其中图中标记的数字为函数的实际前向运行步骤数与原始模拟步骤数 ($10^4$) 的比值，纵轴的总时间是前向计算和后向传播时间的总和。在Bennett算法中，后向运行次数和前向运行次数一样，而Treeverse算法中，反向传播的次数固定为$10^4$。横轴的空间的数值的实际含义为检查点的数目或可逆计算中的最大状态数。\label{fig:seismic}}
+    \caption{Bennett算法和Treeverse算法应用于PML求解过程的微分的时间与空间开销。其中图中标记的数字为函数的实际前向运行步骤数与原始模拟步骤数 ($10^4$) 的比值。
+    纵轴的总时间是前向计算和后向传播时间的总和，横轴的空间的数值的实际含义为检查点的数目或可逆计算中的最大状态数。
+    在Bennett算法中，后向运行次数和前向运行次数一样，而Treeverse算法中，反向传播的次数固定为$10^4$。\\
+    The time and space cost when using Bennett algorithm and Treeverse algorithm in solving the PML equation.
+    The annoted numbers are relative forward overhead defined as the ratio between actual forward computing steps and the original forward computing steps.
+    The time in the $y$ axis includes both forward computing and back propagation, the space in the $x$ axis isdefined as the maximum number of checkpoints in the checkpointing scheme or the maximum intermediate states in the reverse computing scheme.
+    In the Bennett's algorithm, the number of forward and backward computing are the same, while in Treeverse algorithm, the number of back propagation steps is fixed to $10^4$.
+    }
+    \label{fig:seismic}
 \end{figure}
 
 在数值模拟中，我们用双精度浮点数模拟了$1000 \times 1000$的二维格点上的PML方程求解，每个状态要存储4个矩阵$s_n = \{u^{n-1}, u^n, \phi_x^n, \phi_y^n\}$，占用存储空间为 32MB。
@@ -394,6 +394,32 @@ Treeverse+NiLang 的方案是指用可逆计算处理单步运算的微分，同
 感谢王磊老师的讨论以及计算设备的支持。
 感谢彩云天气 CTO 苑明理老师关于自动微分关于自动微分在天气预报中应用的讨论。
 感谢 QuEra 公司提供的研究赞助。
+
+\section*{名~~词~~表}
+\begin{multicols}{2}
+\begin{description}
+\setlength\itemsep{-0.5em}
+    \item[伴随变量] adjoint
+    \item[核函数] kernel function
+    \item[原子函数] primitive function
+    \item[可逆计算] reversible computing
+    \item[可逆编程] reversible programming
+    \item[鹅卵石游戏] pebble game
+    \item[伴随状态法] adjoint state method
+    \item[自动微分] automatic differentiation (AD)
+    \item[前向自动微分] forward mode AD
+    \item[后向自动微分] reverse mode AD
+    \item[地震学] seismic
+    \item[检查点] checkpoint
+    \item[拓展动力学] augmented dynamics
+    \item[损失] loss
+    \item[控制流] control flow
+    \item[辛积分器] symplectic integrator
+    \item[洛伦茨] Lorenz
+    \item[龙格库塔] Runge-Kutta
+\end{description}
+\end{multicols}
+
 
 \section*{附录：时间与空间的交换，鹅卵石游戏}\label{sec:pebblegame}
 鹅卵石游戏是一个定义在一维格子上的单人游戏。人们最初提出这个模型是为了描述可逆计算中的时间与空间的交换关系。游戏开始时，玩家拥有一堆鹅卵石以及一个一维排布的$n$个格子，标记为$0,1,2\ldots n$，并且在$0$号格子上有一个预先布置的鹅卵石。
@@ -445,7 +471,11 @@ Treeverse+NiLang 的方案是指用可逆计算处理单步运算的微分，同
 
 \begin{figure}
     \centerline{\includegraphics[width=0.88\columnwidth,trim={0 0cm 0 0cm},clip]{tradeoff2.pdf}}
-    \caption{(a) Treeverse算法~\cite{Griewank1992}示意图，其中$\eta(\tau, \delta) \equiv \left(\begin{matrix} \tau + \delta \\ \delta \end{matrix}\right)=\frac{(\tau+\delta)!}{\tau!\delta!}$。(b) Bennett算法对应$k=3$的示意图~\cite{Bennett1973,Levine1990}，其中$P$和$P^{-1}$分别代表了计算和反计算。}\label{fig:tradeoff}
+    \caption{
+        (a) Treeverse算法~\cite{Griewank1992}示意图，其中$\eta(\tau, \delta) \equiv \left(\begin{matrix} \tau + \delta \\ \delta \end{matrix}\right)=\frac{(\tau+\delta)!}{\tau!\delta!}$。(b) Bennett算法对应$k=3$的示意图~\cite{Bennett1973,Levine1990}，其中$P$和$P^{-1}$分别代表了计算和反计算。\\
+        (a) An illustration of the Treeverse algorithm~\cite{Griewank1992}, where $\eta(\tau, \delta) \equiv \left(\begin{matrix} \tau + \delta \\ \delta \end{matrix}\right)=\frac{(\tau+\delta)!}{\tau!\delta!}$.
+        (b) An illustration of the Bennett's algorithm for $k=3$~\cite{Bennett1973,Levine1990}, where $P$和$P^{-1}$ are forward computing and reverse computing respectively\\
+        }\label{fig:tradeoff}
 \end{figure}
 
 
@@ -461,7 +491,12 @@ Treeverse+NiLang 的方案是指用可逆计算处理单步运算的微分，同
 
 \begin{figure}
     \centerline{\includegraphics[width=0.88\columnwidth,trim={0 0cm 0 0cm},clip]{bennett_treeverse_pebbles.pdf}}
-    \caption{(a) Treeverse算法 ($\tau=3$, $\delta=3$) 和 (b) Bennett算法 ($k=2$, $n=4$) 对应的最优时间空间交换策略下的鹅卵石游戏解法，横向是一维棋盘的格子，纵向是步骤。其中“\tikzcircle[black,fill=white]{2pt}”为在这一步中收回的鹅卵石，“\tikzcircle[black,fill=black]{2pt}”为在这一步中放上的鹅卵石，而颜色稍淡的“\tikzcircle[mygray,fill=mygray]{2pt}”则对应之前步骤中遗留在棋盘上未收回的鹅卵石。(a) 中的红色格子代表已被涂鸦。(b) 中带旗帜的格点代表终点。}\label{fig:pebbles}
+    \caption{(a) Treeverse算法 ($\tau=3$, $\delta=3$) 和 (b) Bennett算法 ($k=2$, $n=4$) 对应的最优时间空间交换策略下的鹅卵石游戏解法，横向是一维棋盘的格子，纵向是步骤。其中“\tikzcircle[black,fill=white]{2pt}”为在这一步中收回的鹅卵石，“\tikzcircle[black,fill=black]{2pt}”为在这一步中放上的鹅卵石，而颜色稍淡的“\tikzcircle[mygray,fill=mygray]{2pt}”则对应之前步骤中遗留在棋盘上未收回的鹅卵石。(a) 中的红色格子代表已被涂鸦。(b) 中带旗帜的格点代表终点。\\
+    (a) The Treeverse algorithm ($\tau=3$, $\delta=3$) and (b) Bennett's algorithm ($k=2$, $n=4$) solutions to the pebble game, the $x$ direction is the grid layout and the $y$ direction is the number of steps.
+    Here, ``\tikzcircle[black,fill=white]{2pt}'' represents the pebbles returned to the free pool in the current step,
+    ``\tikzcircle[black,fill=black]{2pt}'' represents the pebble put of the board in current step,
+    and ``\tikzcircle[mygray,fill=mygray]{2pt}'' are pebbles left on the board. In (a), red grids are painted grids. In (b), the grid with a flag is the goal.
+    }\label{fig:pebbles}
 \end{figure}
 
 \begin{algorithm}
@@ -522,7 +557,14 @@ Treeverse+NiLang 的方案是指用可逆计算处理单步运算的微分，同
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.8\columnwidth]{./fig1.pdf}
-    \caption{为了回溯中间状态，时间和空间在两种最优时间-空间交换策略下的关系。(a) 固定横轴为状态回溯的计算时间与原函数计算时间的比值，对比再允许固定时间开销下，内存的额外开销。其中Bennett算法代表了可逆计算下的最优策略，而Treeverse则是传统计算允许的最优策略。(b) 对比Bennett算法与Treeverse算法空间开销的比值。\label{fig:timespace}}
+    \caption{为了回溯中间状态，时间和空间在两种最优时间-空间交换策略下的关系。
+    (a) 固定横轴为状态回溯的计算时间与原函数计算时间的比值，对比再允许固定时间开销下，内存的额外开销。其中Bennett算法代表了可逆计算下的最优策略，而Treeverse则是传统计算允许的最优策略。
+    (b) 对比Bennett算法与Treeverse算法空间开销的比值。\\
+    The time and space to trace back states in two time-space exchange strategies.
+    (a) Space overheads as a function of time overheads at different steps of simulation.
+    The Bennett's algorithm is the optimal time-space tradeoff scheme in reversible computing, while the Treeverse algorithm is the optimal time-space tradeoff scheme in a regular computing framework.
+    (b) The ratio of the space overheads in Bennett's algorithm and that in the Treeverse algorithm.
+    }\label{fig:timespace}
 \end{figure}
 
 鹅卵石游戏是对程序的时间和空间的交换关系的非常理想化的描述，它恰巧非常合适用于描述常微分方程求解这样的不可逆线性程序。
