@@ -87,11 +87,11 @@
 Nolan 早在他1953年的博士论文中就提出过计算机自动化求导的构想~\cite{Nolan1953}，
 后来针对这一构想又出现了两种不同的实践，分别是1964年由 Wengert 实现的前向自动微分~\cite{Wengert1964}和1970年 Linnainmaa 实现的后向自动微分~\cite{Linnainmaa1976}。
 而最近十几年，由于后向自动微分在机器学习中的广泛应用，相关技术越来越成熟并在科学计算中的也得到了越来越多的应用。
-科学家们利用方便的，自动化的计算机辅助求导解决了很多重要的物理问题，其中包括帮助变分蒙特卡洛设计更加通用的多体物理波函数~\cite{Gutzwiller1963,Carleo2017, Deng2017,Cai2018}，加速变分量子算法的模拟~\cite{Luo2020}，拓展变分张量网络算法~\cite{Liao2019}，以及求解自旋玻璃基态构型~\cite{Liu2020}等。
+科学家们利用方便的，自动化的计算机辅助求导解决了很多重要的物理问题，其中包括帮助变分蒙特卡洛设计更加通用的多体物理波函数~\cite{Gutzwiller1963,Carleo2017, Deng2017,Cai2018}，加速变分量子算法的模拟~\cite{Luo2020}，拓展变分张量网络算法~\cite{Liao2019}，以及求解自旋玻璃基态构型~\cite{Liu2021}等。
 %甚至是一些非解析的蒙特卡洛抽样过程，人们也设计出了一些办法对其自动化的求导~\cite{Zhang2019}。
 
 对物理模拟过程的自动微分是自动微分重要的应用之一，其中最大的技术挑战是对电磁学，海洋学~\cite{Heimbach2005}和地震学~\cite{Symes2007,Zhu2021}等问题中最核心的微分方程求解过程的自动微分。
-这些微分方程的常见的求解方法是先将问题的时空坐标离散化，并以数值积分的形式完成求解。要得到精确的结果，离散化后的网格需要设计的很稠密，从而对存储空间和计算时间的需求巨大。与此同时，在自动微分计算过程中，机器学习中主流的后向自动微分库，如 Jax~\cite{James2018} 和 PyTorch~\cite{Paszke2019}，需要很多额外的空间来缓存中间结果，导致人们经常无法直接用它们对具有一定规模的实际物理模拟问题求导。
+这些微分方程的常见的求解方法是先将问题的时空坐标离散化，并以数值积分的形式完成求解。要得到精确的结果，离散化后的网格需要设计的很稠密，从而对存储空间和计算时间的需求巨大。与此同时，在自动微分计算过程中，机器学习中主流的后向自动微分库，如 Jax~\cite{Bradbury2018} 和 PyTorch~\cite{Paszke2019}，需要很多额外的空间来缓存中间结果，导致人们经常无法直接用它们对具有一定规模的实际物理模拟问题求导。
 一种传统的解决常微分方程求导的方案叫做伴随状态法~\cite{Plessix2006,Chen2018}，它假设了在较短时间内积分器可逆，并通过逆向积分来帮助自动微分回溯状态。
 事实上，除了 Leapfrog 等少数辛积分器可外，大多数的积分器并不能保证严格的时间反演对称，所以伴随状态法往往存在与积分步长有关的系统性误差。
 后来，有人把机器学习中的最优检查点算法带入到了物理模拟的反向自动微分中~\cite{Symes2007}，仅引入对数的额外时间和空间开销就做到了严格求导。也有一些人直接利用基于最优检查点算法~\cite{Griewank1992,Forget2015}的自动微分编译器，如 Tapenade~\cite{Hascoet2013}, OpenAD~\cite{Utke2008} 和 TAF~\cite{Heimbach2005} 等，编译模拟代码实现类似的时间和空间的权衡。
@@ -135,7 +135,6 @@ Nolan 早在他1953年的博士论文中就提出过计算机自动化求导的�
         ($s_0$, $\frac{\partial \mathcal{L}}{\partial s_0}$, $\frac{\partial \mathcal{L}}{\partial \theta}$) = ODESolve(aug\_dynamics, $S_0$, $\theta$, $t_n$, $t_0$) \Comment*[r]{对拓展动力学反向积分}
     \caption{伴随状态法}\label{alg:adjointstate}
 \end{algorithm}
-
 
 
 \subsection{前向自动微分}
@@ -351,7 +350,7 @@ $$\dot{*}: ((a, \dot a), (b, \dot b)) \mapsto (a * b, a \dot b + b \dot a)$$
     \frac{\partial u}{\partial t} = v_0 & t=0.
     \end{cases}
 \end{align}
-其中$c$为波在介质中的传播速度。理想匹配层 (PML)~\cite{Berenger1994,Roden2000,MaKoEz08}是模拟波在介质中运动的一种准确可靠的方案，
+其中$c$为波在介质中的传播速度。理想匹配层 (PML)~\cite{Berenger1994,Roden2000,Martin2008}是模拟波在介质中运动的一种准确可靠的方案，
 为了在有限尺寸模拟该动力学，PML方法引入了吸收层防止边界反射的影响。在引入辅助场并对空间和时间进行离散化后，上述方程可变形为如下数值计算过程
 \begin{align}
     \begin{cases}
@@ -588,9 +587,50 @@ Treeverse+NiLang 的方案是指用可逆计算处理单步运算的微分，同
 \bigskip
 %\begin{footnotesize}
 
-\bibliographystyle{wulixuebao}
-\bibliography{refs}
+%\bibliographystyle{wulixuebao}
+%\bibliography{refs}
 %\printbibliography
+\begin{thebibliography}{999}
+\bibitem{Griewank2008} Griewank A and Walther A 2008 {\it SIAM} , Evaluating derivatives: principles and techniques of algorithmic differentiation
+\bibitem{Rosset2019} Rosset C 2019 {\it Microsoft Blog} , Turing-nlg: A 17-billion-parameter language model by microsoft
+\bibitem{Nolan1953} Nolan J F 1953 , {\it PhD thesis:} Analytical differentiation on a digital computer
+\bibitem{Wengert1964} Wengert R E 1964 {\it Communications of the ACM} {\bf 7} 463
+\bibitem{Linnainmaa1976} Linnainmaa S 1976 {\it BIT Numerical Mathematics} {\bf 16} 146
+\bibitem{Gutzwiller1963} Gutzwiller M C 1963 {\it Phys. Rev. Lett.} {\bf 10} 159
+\bibitem{Carleo2017} Carleo G and Troyer M 2017 {\it Science} {\bf 355} 602
+\bibitem{Deng2017} Deng D L, Li X P, and Sarma S D 2017 {\it Phys. Rev. X} {\bf 7} 021021
+\bibitem{Cai2018} Cai Z and Liu J G 2018 {\it Phys. Rev. B} {\bf 97} 035116
+\bibitem{Luo2020} Luo X Z, Liu J G, Zhang P, and Wang L 2020 {\it Quantum} {\bf 4} 341
+\bibitem{Liao2019} Liao H J, Liu J G, Wang L, and Xiang T 2019 {\it Phys. Rev. X} {\bf 9} 031041
+\bibitem{Liu2021} Liu J G, Wang L, and Zhang P 2021 {\it Phys. Rev. Lett.} {\bf 126} 090506
+\bibitem{Heimbach2005} Heimbach P, Hill C, and Giering R 2005 {\it Future Generation Computer Systems} {\bf 21} 1356
+\bibitem{Symes2007} Symes W W 2007 {\it Geophysics} {\bf 72} SM213
+\bibitem{Zhu2021} Zhu W Q, Xu K L, Darve E, and Beroza G C 2021 {\it Computers \& Geosciences} 151
+\bibitem{Bradbury2018} Bradbury J, Frostig R, Hawkins P, Johnson M J, Leary C, Maclaurin D, Necula G, Paszke A, VanderPlas J, Wanderman-Milne S, and Zhang Q 2018
+{\it Software} , JAX: composable transformations of Python+NumPy programs
+\bibitem{Paszke2019} Paszke A, Gross S, Massa F, Lerer A, Bradbury J, Chanan G,
+Killeen T, Lin Z M, Gimelshein N, Antiga L, Desmaison A, Köpf A,
+Yang E, DeVito Z, Raison M, Tejani A, Chilamkurthy S, Steiner B, Fang L, Bai J J, and Chintala S 2019 {\it arXiv} 1912.01703
+\bibitem{Plessix2006} Plessix R 2006 {\it Geophysical Journal International} {\bf 167} 495
+\bibitem{Chen2018} Chen R T, Rubanova Y, Bettencourt J, and Duvenaud D K 2018 {\it Advances in
+Neural Information Processing Systems} 31
+\bibitem{Griewank1992} Griewank A 1992 {\it Optimization Methods and software} {\bf 1} 35
+\bibitem{Forget2015} Forget G, Campin J M, Heimbach P, Hill C N, Ponte R M, and Wunsch C 2015 {\it Geoscientific Model Development} {\bf 8} 3071
+\bibitem{Hascoet2013} Hascoet L and Pascual V 2013 {\it ACM Transactions on Mathematical Software (TOMS)} {\bf 39}
+20
+\bibitem{Utke2008} Utke J, Naumann U, Fagan M, Tallent N, Strout M, Heimbach P, Hill G, and Wunsch C 2008 {\it ACM Transactions on Mathematical Software (TOMS)} {\bf 34} 1
+\bibitem{Liu2020b} Liu J G and Zhao T 2020 {\it arXiv} 2003.04617
+\bibitem{Levine1990} Levine R Y and Sherman A T 1990 {\it SIAM Journal on Computing} {\bf 19} 673
+\bibitem{Grote2010} Grote M J and Sim I 2010 {\it arXiv} 1001.0319
+\bibitem{Lorenz1963} Lorenz E N 1963 {\it Journal of atmospheric sciences} {\bf 20} 130
+\bibitem{Hirsch2012} Hirsch M W, Smale S, and Devaney R L 2012 {\it Academic press} , Differential equations,
+dynamical systems, and an introduction to chaos
+\bibitem{Revels2016} Revels J, Lubin M, and Papamarkou R 2016 {\it arXiv} 1607.07892
+\bibitem{Berenger1994} Berenger J P 1994 {\it Journal of computational physics} {\bf 114} 185
+\bibitem{Roden2000} Roden J A and Gedney S D 2000 {\it  Microwave and Optical Technology Letters} {\bf 27} 334
+\bibitem{Martin2008} Martin R, Komatitsch D, and Ezziani A 2008 {\it Geophysics} {\bf 73} T51
+\bibitem{Bennett1973} Bennett C H 1973 {\it IBM journal of Research and Development} {\bf 17} 525
+\end{thebibliography}
 
 \newpage
 
