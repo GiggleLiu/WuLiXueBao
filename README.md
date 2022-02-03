@@ -143,3 +143,16 @@ julia> loss2, (gin2, gsrcv2, gc2), log2 = getgrad_mse(c2=c20, param=param, src=s
 ![seismic simulation](data/threelayers_gradients.png)
 
 Here, the method for time space tradeoff is Treeverse algorithm (δ=20) and Bennett algorithm (k=20).
+
+## Please cite the following paper if your find our work useful
+```
+@article{Liu2021,
+  title={Automatic differentiation and its applications in physics simulation},
+  author={Jin-Guo, Liu and Kai-Lai, Xu},
+  journal={ACTA PHYSICA SINICA},
+  volume={70},
+  number={14},
+  year={2021},
+  publisher={CHINESE PHYSICAL SOC PO BOX 603, BEIJING 100080, PEOPLES R CHINA}
+}
+```
